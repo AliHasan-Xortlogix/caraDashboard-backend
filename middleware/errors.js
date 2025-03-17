@@ -1,9 +1,7 @@
-// middleware/error.js
 const ErrorHandler = require("../utils/Errorhandler");
 
 // Global Error Middleware
 const error = (err, req, res, next) => {
-    // Set default error status and message
     let statusCode = err.statusCode || 500;
     let message = err.message || "Internal Server Error";
 
@@ -46,7 +44,6 @@ const error = (err, req, res, next) => {
         message = err.errors.map((e) => e.message).join(", ");
     }
 
-    // Handle default error
     res.status(statusCode).json({
         success: false,
         message,

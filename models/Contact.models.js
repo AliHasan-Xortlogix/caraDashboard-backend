@@ -17,7 +17,7 @@ const ContactSchema = new mongoose.Schema({
   type: { type: String, default: null },
   assigned_to: { type: String, default: null },
   profile_image: { type: String, default: null },
-  tags: { type: String, default: null },
+  tags: { type: String },
   followers: { type: Array, default: [] },
   additional_emails: { type: Array, default: [] },
   additional_phones: { type: Array, default: [] },

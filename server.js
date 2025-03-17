@@ -9,7 +9,8 @@ const ghlauthRoutes = require('./routes/Ghlauth.routes');
 const Settings = require('./routes/Settings.routes')
 const path = require('path');
 const autoauth =require('./routes/autoauth.routes')
-// Connect to the database
+const customfields=require('./routes/customfields.routes')
+const uploadcontact =require('./routes/upload.routes')
 conectDB();
 
 // Initialize environment variables
@@ -28,6 +29,8 @@ app.use(cors({
 }));
 
 // Routes setup
+app.use('/api/v1', uploadcontact)
+app.use('/api/v1',customfields)
 app.use('/api/v1', autoauth)
 app.use('/api/v1', userRoutes);
 app.use('/api/v1', ghlauthRoutes);

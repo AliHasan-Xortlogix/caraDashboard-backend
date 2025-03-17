@@ -29,10 +29,10 @@ const autoAuthController = async (req, res) => {
 
         let user = await User.findOne({ location_id: location });
 
-        if (user) {
+        if (!user) {
             // If user exists, return token
-            return sendToken(user, 200, res);
-        } else {
+            // return sendToken(user, 200, res);
+            // } else {
             // Create a new user
             const password = 12345678;  // Default password
             const email = `${location}@gmail.com`;  // Temporary email based on location
@@ -56,44 +56,45 @@ const autoAuthController = async (req, res) => {
                 user_type: 'company',
                 status: 'active'
             });
-
-            // Prepare response object
-            let response = {
-                user_id: user._id,
-                location_id: user.location_id || null,
-                is_crm: false,
-                token: user.ghl_api_key,
-                crm_connected: false,
-            };
-
-            // Check CRM connection
-            let authToken = await GhlAuth.findOne({ user_id: user._id });
-            if (authToken) {
-                let [tokenx, refreshedToken] = await CRM.go_and_get_token(
-                    authToken.refresh_token,
-                    "refresh",
-                    user._id,
-                    authToken
-                );
-                console.log('Token retrieved:', tokenx, 'Refreshed Token:', refreshedToken);
-                response.crm_connected = tokenx && refreshedToken;
-            }
-            
-            // If CRM is not connected, attempt to connect via OAuth
-            if (!response.crm_connected) {
-                response.crm_connected = await CRM.connectOauth(location, response.token, false, user._id); 
-            }
-
-            if (response.crm_connected) {
-                // If CRM connected successfully, send token
-                return sendToken(user, 201, res);
-            }
-
-            // CRM failed, respond with necessary info
-            response.is_crm = response.crm_connected;
-            response.token_id = user._id.toString();
-            return sendToken(user, 200, res);
         }
+        // Prepare response object
+        let response = {
+            user_id: user._id,
+            location_id: user.location_id || null,
+            is_crm: false,
+            token: user.ghl_api_key,
+            crm_connected: false,
+        };
+
+        // Check CRM connection
+        let authToken = await GhlAuth.findOne({ user_id: user._id });
+
+        if (authToken) {
+            let [tokenx, refreshedToken] = await CRM.goAndGetToken(
+                authToken.refresh_token,
+                "refresh_token",
+                user._id,
+                authToken
+            );
+            console.log('Token retrieved:', tokenx, 'Refreshed Token:', refreshedToken);
+            response.crm_connected = tokenx && refreshedToken;
+        }
+
+        // If CRM is not connected, attempt to connect via OAuth
+        if (!response.crm_connected) {
+            response.crm_connected = await CRM.connectOauth(location, response.token, false, user._id);
+        }
+
+        if (response.crm_connected) {
+            // If CRM connected successfully, send token
+            return sendToken(user, 201, res);
+        }
+
+        // CRM failed, respond with necessary info
+        response.is_crm = response.crm_connected;
+        response.token_id = user._id.toString();
+        return sendToken(user, 200, res);
+
     } catch (error) {
         console.error(error);
         return res.status(500).json({

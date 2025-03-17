@@ -29,15 +29,6 @@ class CRM {
     // Helper method to handle API calls with error handling
     static async makeCall(url, method = "GET", data = null, headers = {}, json = true) {
         try {
-            if (headers && headers.token) {
-                headers["Authorization"] = `Bearer ${headers.token}`;
-            }
-
-            if (data && json) {
-                headers["Content-Type"] = "application/json";
-            } else if (data) {
-                headers["Content-Type"] = "application/x-www-form-urlencoded";
-            }
 
             const requestOptions = {
                 method: method.toUpperCase(),
@@ -45,22 +36,25 @@ class CRM {
                 headers,
                 timeout: 30000,  // Timeout of 30 seconds
             };
-console.log('data',data)
+
             if (data) {
                 requestOptions.data = json ? JSON.stringify(data) : new URLSearchParams(data).toString();
             }
-
+            if (json) {
+                headers["Content-Type"] = "application/json";
+            }
+            // console.log('Request of MakeCall',JSON.stringify(requestOptions));
             const response = await axios(requestOptions);
             return response.data;
         } catch (error) {
-            logger.error(`API Call Error: ${error.response ? error.response.data : error.message}`);
+            logger.error(`API Call Error: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
             throw new Error("API call failed");
         }
     }
 
 
     // Helper method to fetch or save CRM token
-    static async getCrmToken(where = {}) {
+    async getCrmToken(where = {}) {
         try {
             return await this.crmModel.findOne(where);
         } catch (error) {
@@ -86,6 +80,7 @@ console.log('data',data)
                     company_id: code.companyId,
                     user_id: companyId,
                     crm_user_id: code.user_id,
+                    expires_at: code.expires_in ? new Date(Date.now() + code.expires_in * 1000) : null
                 });
             }
 
@@ -93,7 +88,7 @@ console.log('data',data)
             locRecord.access_token = code.access_token;
             locRecord.refresh_token = code.refresh_token;
             await locRecord.save();
-
+            console.log('locRecord', locRecord);
             return locRecord;
         } catch (error) {
             logger.error("Error saving CRM token:", error);
@@ -124,7 +119,7 @@ console.log('data',data)
     }
 
     // Method to initiate OAuth connection
-    async connectOauth(mainId, token, isCompany = false) {
+    async connectOauth(mainId, token, isCompany = false, $userId = null) {
         try {
             if (!token) return false;
 
@@ -144,7 +139,7 @@ console.log('data',data)
             if (response && response.redirectUrl) {
                 const urlParams = new URL(response.redirectUrl);
                 const code = urlParams.searchParams.get("code");
-                return await this.goAndGetToken(code);
+                return await this.goAndGetToken(code, '', $userId);
             }
             return false;
         } catch (error) {
@@ -152,9 +147,8 @@ console.log('data',data)
             return false;
         }
     }
+    async crmToken(code, method = '') {
 
-    // Exchange code for a token
-    async goAndGetToken(code, type = "", companyId = null, method = '') {
         try {
             const { clientId, clientSecret } = await getSuperadminSettings();
 
@@ -168,20 +162,34 @@ console.log('data',data)
             }
 
             // Prepare the form data for x-www-form-urlencoded format
-            const data = new URLSearchParams();
-            data.append("client_id", clientId);
-            data.append("client_secret", clientSecret);
-            data.append(md, code);
-            data.append("grant_type", method ? 'refresh_token' : 'authorization_code');
+            const data = {
+                client_id: clientId,
+                client_secret: clientSecret,
+                [md]: code,
+                grant_type: method ? 'refresh_token' : 'authorization_code',
+            };
+            console.log('data of crmToken', data);
 
             // Making the API call with x-www-form-urlencoded content type
             const response = await CRM.makeCall(`${this.baseUrl}oauth/token`, "POST", data, {
                 "Content-Type": "application/x-www-form-urlencoded",
-            });
+            }, false);
 
-            if (response && response.access_token) {
+            return response;
+        } catch (error) {
+            logger.error(`CRM Token Error: ${error.response ? error.response.data : error.message}`);
+            throw new Error("CRM token request failed");
+        }
+    }
+    // Exchange code for a token
+    async goAndGetToken(code, type = "", companyId = null, loc = null) {
+        try {
+            const token = await this.crmToken(code, type);
+
+            if (token && token.access_token) {
                 // Save the token
-                const savedToken = await CRM.saveCrmToken(response, companyId);
+                console.log('response of crmToken', token);
+                const savedToken = await this.saveCrmToken(token, companyId);
                 return [true, savedToken];  // Ensure the saved token is returned
             }
 
