@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-
+const upload = require('../middleware/multer');
 const {
     registerUser,
     loginUser,
@@ -23,7 +23,7 @@ router.post('/login', loginUser);
 router.get('/profile', isAuthenticatedUser, getUserProfile);
 router.get('/getall', getAllUsers);
 // Update the logged-in user's profile (protected route)
-router.put('/profile', isAuthenticatedUser, updateUserProfile);
+router.put('/profile', isAuthenticatedUser, upload.single('image'), updateUserProfile);
 
 // Forgot password route (public, no authentication required)
 router.post('/forgot-password', forgotPassword);

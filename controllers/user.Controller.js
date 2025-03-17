@@ -6,12 +6,12 @@ const catchAsyncErrors = require('../middleware/catchAsyncError');
 const { userCreateSchema } = require('../Validations/User.Validation');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-
+const upload = require('../middleware/multer'); 
 // Register a new user => /api/v1/register
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     // Validate request body using Joi
     const result = await userCreateSchema.validateAsync(req.body);
-    const { first_name, last_name, email, password } = result;
+    const { name, email, password, role = 'company', added_by } = result;
 
     // Check if the user already exists
     const userExists = await User.findOne({ email });
@@ -21,10 +21,12 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
 
     // Create a new user
     const user = await User.create({
-        first_name,
-        last_name,
+        
+        name,
         email,
         password,
+        role,
+        added_by, // optional, can reference another user (e.g., an admin)
     });
 
     // Send JWT Token response
@@ -86,11 +88,17 @@ exports.getUserProfile = catchAsyncErrors(async (req, res, next) => {
 
 // Update user profile => /api/v1/profile
 exports.updateUserProfile = catchAsyncErrors(async (req, res, next) => {
-    const { first_name, last_name, email, password } = req.body;
+    const { name, email, password } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) {
         return next(new ErrorHandler('User not found', 404));
+    }
+
+    // Handle image upload (if provided)
+    if (req.file) {
+        const imageUrl = `/uploads/${req.file.filename}`; // Get the image URL (relative path)
+        req.body.image = imageUrl; // Save the image URL in the request body
     }
 
     // If password is provided, hash it before updating
@@ -108,31 +116,6 @@ exports.updateUserProfile = catchAsyncErrors(async (req, res, next) => {
     res.status(200).json({
         success: true,
         user: updatedUser,
-    });
-});
-
-// Update user status (e.g., activate, deactivate) => /api/v1/update-status/:userId
-exports.updateUserStatus = catchAsyncErrors(async (req, res, next) => {
-    const { userId } = req.params;
-    const { status } = req.body; // status can be 'active' or 'inactive'
-
-    if (!status || (status !== 'active' && status !== 'inactive')) {
-        return next(new ErrorHandler('Please provide a valid status (active/inactive)', 400));
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-        return next(new ErrorHandler('User not found', 404));
-    }
-
-    // Update the user's status
-    user.status = status;
-    await user.save();
-
-    res.status(200).json({
-        success: true,
-        message: `User status updated to ${status}`,
-        user,
     });
 });
 

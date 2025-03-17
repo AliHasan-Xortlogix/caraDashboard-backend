@@ -2,7 +2,7 @@ const Joi = require('joi');
 
 // User Create Schema
 const userCreateSchema = Joi.object({
-    first_name: Joi.string()
+    name: Joi.string()
         .min(3)
         .max(30)
         .required()
@@ -14,17 +14,7 @@ const userCreateSchema = Joi.object({
             'any.required': 'First name is required',
         }),
 
-    last_name: Joi.string()
-        .min(3)
-        .max(30)
-        .required()
-        .messages({
-            'string.base': 'Last name should be a string',
-            'string.empty': 'Last name cannot be empty',
-            'string.min': 'Last name should have at least 3 characters',
-            'string.max': 'Last name should have at most 30 characters',
-            'any.required': 'Last name is required',
-        }),
+    
 
     email: Joi.string()
         .email({ tlds: { allow: false } })

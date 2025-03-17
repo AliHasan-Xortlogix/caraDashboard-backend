@@ -33,7 +33,7 @@ const tokenSchema = new mongoose.Schema({
         required: true
     }
 }, {
-    timestamps: { createdAt: 'created_at', updatedAt:true }  // Handle createdAt and no updatedAt
+    timestamps: { createdAt: 'created_at', updatedAt:true } 
 });
 
 // Create the Token model using the schema

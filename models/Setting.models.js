@@ -6,7 +6,7 @@ const { Schema } = mongoose;
 const settingsSchema = new Schema({
     user_id: {
         type: Schema.Types.ObjectId,  // Assuming user_id is referencing a User model
-ref: 'User',
+        ref: 'User',
         required: true,
     },
     key: {
@@ -16,7 +16,7 @@ ref: 'User',
     value: {
         type: String,  // or use Schema.Types.Mixed if value can have various types
         required: false,
-    },  created_at: {
+    }, created_at: {
         type: Date,
         default: Date.now,
     },
@@ -25,7 +25,7 @@ ref: 'User',
         default: Date.now,
     }
 }, {
-    timestamps: true,  
+    timestamps: true,
 });
 
 const Settings = mongoose.model('Settings', settingsSchema);

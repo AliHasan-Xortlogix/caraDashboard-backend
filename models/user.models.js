@@ -4,14 +4,7 @@ const jwt = require('jsonwebtoken');
 
 // Define the User schema
 const userSchema = new mongoose.Schema({
-    first_name: {
-        type: String,
-        required: true,
-    },
-    last_name: {
-        type: String,
-        required: true,
-    },
+    name: { type: String, required: true },
 
     email: {
         type: String,
@@ -23,22 +16,25 @@ const userSchema = new mongoose.Schema({
         required: true,
     },
     status: {
-        type: String, enum: ['pending', 'active','inactive'], 
-        default: 'pending',
+        type: String, enum: ['active','inactive'], 
+        default: 'active',
     },
-    reset_token: {
-        type: String,
-        required: false,
-    },
-    reset_token_expiry: {
-        type: Date,
-        required: false,
-    },
+    company_id: { type: String, default: null },
+    location_id: { type: String, default: null },
+    ghl_api_key: { type: String, default: null },
     role: {
         type: String,
-        enum: ['superadmin', 'user'], 
-        default: 'user', 
+        enum: ['superadmin', 'company'], 
+        default: 'company', 
     },
+    image: { type: String, default: null },
+    added_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // Reference to User model
+        default: null
+    },
+    email_verified_at: { type: Date, default: null },
+    remember_token: { type: String, default: null },
 }, {
     timestamps: true,
     createdAt: 'created_at',
