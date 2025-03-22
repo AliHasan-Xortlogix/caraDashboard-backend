@@ -35,7 +35,9 @@ const userCreateSchema = Joi.object({
             'string.min': 'Password should have at least 6 characters',
             'any.required': 'Password is required',
         }),
-
+    location_id: Joi.string().allow('').optional(),
+    role: Joi.string().valid('company', 'superadmin').required(),
+    status: Joi.string().valid('active', 'inactive').required()
 
 });
 

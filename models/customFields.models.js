@@ -8,7 +8,7 @@ const CustomFieldSchema = new mongoose.Schema(
         dataType: { type: String },
         location_id: { type: String },
         user_id: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: String,
             ref: "User",
            
         }, 

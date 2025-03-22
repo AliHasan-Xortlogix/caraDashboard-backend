@@ -5,7 +5,7 @@ const { Schema } = mongoose;
 
 const settingsSchema = new Schema({
     user_id: {
-        type: Schema.Types.ObjectId,  // Assuming user_id is referencing a User model
+        type:mongoose.Schema.Types.ObjectId, 
         ref: 'User',
         required: true,
     },
@@ -14,7 +14,7 @@ const settingsSchema = new Schema({
         required: true,
     },
     value: {
-        type: String,  // or use Schema.Types.Mixed if value can have various types
+        type: Schema.Types.Mixed,
         required: false,
     }, created_at: {
         type: Date,

@@ -6,32 +6,42 @@ const catchAsyncErrors = require('../middleware/catchAsyncError');
 const { userCreateSchema } = require('../Validations/User.Validation');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const upload = require('../middleware/multer'); 
+const upload = require('../middleware/multer');
+const Settings = require('../models/Setting.models')
+const Tag = require('../models/tag')
+const Ghlauth = require('../models/Ghlauth.models')
+const customFields = require('../models/customFields.models')
+const ContactCustomField = require('../models/ContactCutsomField.models')
+const contacts = require('../models/Contact.models')
 // Register a new user => /api/v1/register
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     // Validate request body using Joi
+    const user_id=req.user._id
     const result = await userCreateSchema.validateAsync(req.body);
-    const { name, email, password, role = 'company', added_by } = result;
+    const { name, email, password, role = 'company',  location_id } = result;
+
+    // Set default password if not provided
+    const finalPassword = password || '123456789';
 
     // Check if the user already exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email, location_id });
     if (userExists) {
         return next(new ErrorHandler('User already exists with this email', 400));
     }
 
     // Create a new user
     const user = await User.create({
-        
         name,
         email,
-        password,
+        password: finalPassword, // Use finalPassword (which will be default if not provided)
         role,
-        added_by, // optional, can reference another user (e.g., an admin)
+        added_by: user_id, // optional, can reference another user (e.g., an admin)
     });
 
     // Send JWT Token response
     sendToken(user, 201, res);
 });
+
 
 // Login user => /api/v1/login
 exports.loginUser = catchAsyncErrors(async (req, res, next) => {
@@ -60,19 +70,39 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
 
 // Get all users => /api/v1/users
 exports.getAllUsers = catchAsyncErrors(async (req, res, next) => {
-    const users = await User.find();
 
-    if (!users || users.length === 0) {
-        return next(new ErrorHandler('No users found', 404));
+    if (req.user.role === 'superadmin') {
+        const users = await User.find();
+        if (!users || users.length === 0) {
+            return next(new ErrorHandler('No users found', 404));
+        }
+        return res.status(200).json({
+            success: true,
+            users,
+        });
     }
 
-    res.status(200).json({
-        success: true,
-        users,
+
+    if (req.user.role === 'company') {
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return next(new ErrorHandler('User not found', 404));
+        }
+        return res.status(200).json({
+            success: true,
+            user,
+        });
+    }
+
+
+    return res.status(403).json({
+        success: false,
+        message: 'Access denied',
     });
 });
 
-// Get current logged-in user's profile => /api/v1/profile
+
+
 exports.getUserProfile = catchAsyncErrors(async (req, res, next) => {
     const user = await User.findById(req.user.id); // Using user ID from JWT
 
@@ -88,8 +118,8 @@ exports.getUserProfile = catchAsyncErrors(async (req, res, next) => {
 
 // Update user profile => /api/v1/profile
 exports.updateUserProfile = catchAsyncErrors(async (req, res, next) => {
-    const { name, email, password } = req.body;
-
+    const { name, email, password, location_id } = req.body;
+    console.log('user', name, email, password)
     const user = await User.findById(req.user.id);
     if (!user) {
         return next(new ErrorHandler('User not found', 404));
@@ -112,30 +142,14 @@ exports.updateUserProfile = catchAsyncErrors(async (req, res, next) => {
         new: true,
         runValidators: true,
     });
-
+    console.log('ji')
     res.status(200).json({
         success: true,
         user: updatedUser,
     });
 });
 
-// Delete user => /api/v1/delete-user/:userId
-exports.deleteUser = catchAsyncErrors(async (req, res, next) => {
-    const { userId } = req.params;
 
-    const user = await User.findById(userId);
-    if (!user) {
-        return next(new ErrorHandler('User not found', 404));
-    }
-
-    // Delete user
-    await user.remove();
-
-    res.status(200).json({
-        success: true,
-        message: 'User deleted successfully',
-    });
-});
 
 // Forgot password => /api/v1/forgot-password
 exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
@@ -211,3 +225,69 @@ exports.logoutUser = catchAsyncErrors(async (req, res, next) => {
         message: 'Logged out successfully',
     });
 });
+
+exports.updateUserBySuperadmin = catchAsyncErrors(async (req, res, next) => {
+    const { userId } = req.params;
+    console.log(userId)
+    const { name, email, role, location_id } = req.body; // Capture fields that can be updated
+
+    // Check if the superadmin is attempting to edit their own details
+    if (req.user.role !== 'superadmin') {
+        return next(new ErrorHandler('Access denied', 403));
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        return next(new ErrorHandler('User not found', 404));
+    }
+
+
+
+    // Update user details by the superadmin
+    const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
+        new: true,
+        runValidators: true,
+    });
+
+    res.status(200).json({
+        success: true,
+        user: updatedUser,
+    });
+});
+exports.deleteUserBySuperadmin = catchAsyncErrors(async (req, res, next) => {
+    const { userId } = req.params;
+
+    // Check if the user is a superadmin
+    if (req.user.role !== 'superadmin') {
+        return next(new ErrorHandler('Access denied', 403));
+    }
+
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+        return next(new ErrorHandler('User not found', 404));
+    }
+
+    const { _id, location_id } = user;
+
+    // Use deleteOne instead of remove
+    await User.deleteOne({ _id });
+
+    // Remove related data in parallel
+    await Promise.all([
+        Settings.deleteMany({ user_id: _id }),
+        Tag.deleteMany({ user_id: _id }),
+        Ghlauth.deleteMany({ user_id: _id }),
+        customFields.deleteMany({ user_id: _id }),
+        ContactCustomField.deleteMany({ user_id: _id }),
+        contacts.deleteMany({ location_id: location_id }),
+    ]);
+
+    // Return a success response
+    res.status(200).json({
+        success: true,
+        message: 'User and related data deleted successfully',
+    });
+});
+
+

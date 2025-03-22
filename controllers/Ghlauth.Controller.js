@@ -15,8 +15,8 @@ async function getSuperadminSettings() {
         const userId = superadmin._id; // Assuming _id is the identifier
 
         // Fetch client_id and client_secret from the Settings table
-        const clientIdSetting = await Settings.findOne({ user_id: userId, key: 'client_id' });
-        const clientSecretSetting = await Settings.findOne({ user_id: userId, key: 'client_secret' });
+        const clientIdSetting = await Settings.findOne({ user_id: userId, key: 'clientId' });
+        const clientSecretSetting = await Settings.findOne({ user_id: userId, key: 'clientSecret' });
 
         if (!clientIdSetting || !clientSecretSetting) {
             throw new Error('Client ID or Client Secret not found');
@@ -57,7 +57,7 @@ async function handleAuth(req, res) {
 
         const url = `https://marketplace.gohighlevel.com/oauth/chooselocation?response_type=code&redirect_uri=${redirectUri}&client_id=${client_id}&scope=${scope}`;
         console.log(url);
-        return res.redirect(url);
+        return res.json({ redirectUrl: url });
 
     } catch (err) {
         return res.status(500).json({ error: 'Something went wrong: ' + err.message });
@@ -66,7 +66,7 @@ async function handleAuth(req, res) {
 
 
 async function handleCallback(req, res) {
-    console.log("hi");
+
     const { code } = req.query;  // Get the authorization code from the query
     console.log('code', code);
 
@@ -139,13 +139,14 @@ async function handleCallback(req, res) {
             });
             console.log('New user created with tokens.');
         }
-
+        const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/Settings?connected`;
         // Respond with a success message and the token data
-        return res.json({ message: 'Authorization successful', data: response.data });
+     return res.redirect(redirectUrl);
 
     } catch (err) {
         console.error("Error:", err);
-        return res.status(500).json({ error: 'Something went wrong during callback handling: ' + err.message });
+        const redirectUrl = `${process.env.FRONTEND_URL}/dashboard/Settings?error`;
+        return res.redirect(redirectUrl);
     }
 }
 

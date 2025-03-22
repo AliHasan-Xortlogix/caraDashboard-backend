@@ -22,23 +22,47 @@ const getCustomFieldsFromGHL = async (locationId, accessToken) => {
 // Function to store custom fields in MongoDB
 const storeCustomFields = async (customFields, locationId, userId) => {
     try {
+
         for (const field of customFields) {
-            const newCustomField = new CustomField({
-                cf_id: field.id,
-                cf_name: field.name,
-                cf_key: field.fieldKey,
-                dataType: field.dataType,
-                location_id: locationId,
+            // Check if a custom field already exists with the same user_id, cf_id, and location_id
+            const existingField = await CustomField.findOne({
                 user_id: userId,
+                cf_id: field.id,
+                location_id: locationId
             });
-            await newCustomField.save(); // Save each custom field to MongoDB
+
+            if (existingField) {
+                // If the custom field already exists, update it
+                existingField.cf_name = field.name;
+                existingField.cf_key = field.fieldKey;
+                existingField.dataType = field.dataType;
+
+                // Save the updated custom field
+                await existingField.save();
+                console.log(`Custom field with id ${field.id} updated`);
+            } else {
+                // If the custom field doesn't exist, create a new one
+                const newCustomField = new CustomField({
+                    cf_id: field.id,
+                    cf_name: field.name,
+                    cf_key: field.fieldKey,
+                    dataType: field.dataType,
+                    location_id: locationId,
+                    user_id: userId,
+                });
+
+                // Save the new custom field
+                await newCustomField.save();
+                console.log(`Custom field with id ${field.id} created`);
+            }
         }
-        console.log('Custom fields successfully saved');
+        console.log('Custom fields successfully processed');
     } catch (error) {
         console.error('Error saving custom fields:', error);
         throw new Error('Failed to save custom fields');
     }
 };
+
 
 // Main controller function to handle the logic for fetching and saving custom fields
 const fetchAndSaveCustomFields = async (req, res) => {
@@ -57,7 +81,7 @@ const fetchAndSaveCustomFields = async (req, res) => {
 
         // Fetch custom fields from GoHighLevel API
         const customFields = await getCustomFieldsFromGHL(locationId, accessToken);
-
+        console.log(customFields)
         // Store custom fields in the database
         await storeCustomFields(customFields, locationId, userId);
 

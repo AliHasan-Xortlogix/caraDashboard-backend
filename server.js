@@ -8,29 +8,33 @@ const { isAuthenticatedUser, authorizeRoles } = require('./middleware/jwtToken')
 const ghlauthRoutes = require('./routes/Ghlauth.routes');
 const Settings = require('./routes/Settings.routes')
 const path = require('path');
-const autoauth =require('./routes/autoauth.routes')
-const customfields=require('./routes/customfields.routes')
-const uploadcontact =require('./routes/upload.routes')
+const autoauth = require('./routes/autoauth.routes')
+const customfields = require('./routes/customfields.routes')
+const uploadcontact = require('./routes/upload.routes')
+const displaycf = require('./routes/displaycf.routes')
+const webhook = require('./routes/webhook.routes')
+const gallery = require('./routes/Gallery.routes')
 conectDB();
 
 // Initialize environment variables
 require('dotenv').config();
 const app = express();
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-
+app.use(express.static('public'));
 
 // Middleware setup
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use(cors({
-    origin: '*',
-    credentials: true
-}));
+app.use(cors());
+app.options('*', cors());
 
 // Routes setup
+app.use('/api/v1', gallery)
+app.use('/api/v1', webhook)
+app.use('/api/v1', displaycf)
 app.use('/api/v1', uploadcontact)
-app.use('/api/v1',customfields)
+app.use('/api/v1', customfields)
 app.use('/api/v1', autoauth)
 app.use('/api/v1', userRoutes);
 app.use('/api/v1', ghlauthRoutes);

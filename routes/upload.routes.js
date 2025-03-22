@@ -19,6 +19,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Define the POST route for JSON upload
-router.post('/import-leads',isAuthenticatedUser, upload.single('file'), homeController.processFile);
+router.post('/import-leads', isAuthenticatedUser, upload.single('file'), homeController.processFile);
 
 module.exports = router;

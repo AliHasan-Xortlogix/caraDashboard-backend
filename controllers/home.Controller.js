@@ -93,47 +93,46 @@ const processFile = async (req, res) => {
             for (const field of leadData.customFields) {
               console.log('Processing custom field:', field);
 
-              // Fetch the custom field from the database by cf_id (custom field ID)
+            
               let dbCf = await customFieldModels.findOne({ cf_id: field.id });
-
+console.log(dbCf)
               if (!dbCf) {
                 console.warn(`Custom Field with ID ${field.id} not found for lead ${leadData.id}`);
-                continue;  // Skip if the custom field doesn't exist in the database
+                continue;  
               }
 
-              // Determine the field value key based on the type, capitalizing the first letter
               const fieldValueKey = `fieldValue${field.type.charAt(0).toUpperCase() + field.type.slice(1)}`;
 
-              // Check if the key exists on the field object
+       
               if (!(fieldValueKey in field)) {
                 console.warn(`No value found for field type ${field.type} in custom field ID ${field.id}`);
-                continue; // Skip if the corresponding value is missing
+                continue; 
               }
 
-              // Extract the value dynamically using the key
+             
               let value = field[fieldValueKey];
 
-              // Proceed if the value is valid
+              
               if (value !== undefined && value !== null) {
-                // Check if a record already exists for this contact and custom field
+                
                 const existingRecord = await ContactCustomField.findOne({
                   contact_id: contact._id,
                   custom_field_id: dbCf._id,
                 });
 
                 if (existingRecord) {
-                  // If record exists, update it
+                
                   existingRecord.value = value;
-                  existingRecord.user_id = req.user?.id;  // Update user_id if necessary
+                  existingRecord.user_id = req.user?.id;  
                   await existingRecord.save();
                   console.log(`Updated value for custom field ID ${field.id} for lead ${leadData.id}`);
                 } else {
-                  // If record doesn't exist, create a new one
+             
                   await ContactCustomField.create({
-                    contact_id: contact._id,  // Assuming 'contact' object exists and is valid
+                    contact_id: contact._id,  
                     custom_field_id: dbCf._id,
-                    value: value,  // Ensure 'value' holds the data you intend to store
-                    user_id: req.user?.id,  // Assuming 'req.user' is available and contains the user info
+                    value: value, 
+                    user_id: req.user?.id,  
                   });
                   console.log(`Stored value for custom field ID ${field.id} for lead ${leadData.id}`);
                 }
@@ -150,14 +149,9 @@ const processFile = async (req, res) => {
 
           if (leadData.tags && leadData.tags.length > 0) {
             try {
-              // Log the tags array once before the loop starts
-          
-
               for (const tagName of leadData.tags) {
-
                 const trimmedTagName = tagName.trim();
-               
-                // Check if the tag already exists in the database with the same user_id and location_id
+
                 let tag = await Tag.findOne({
                   name: trimmedTagName,
                   user_id: req.user?.id,
@@ -165,30 +159,30 @@ const processFile = async (req, res) => {
                 });
 
                 if (!tag) {
-                  // If the tag doesn't exist, create a new one
                   tag = await Tag.create({
                     name: trimmedTagName,
                     location_id: leadData.locationId || null,
                     user_id: req.user?.id,
                   });
 
-                  console.log('Created new tag:');
+                  console.log('Created new tag:', trimmedTagName);
                 } else {
-                  console.log('Tag already exists:');
+                  console.log('Tag already exists:', trimmedTagName);
                 }
 
-                // Add the tag to the contact's tag array
-                await Contact.updateOne(
-                  { _id: contact._id },
-                  { $addToSet: { tags: tag._id } } // Ensure the tag is only added once
-                );
+                // // Use $addToSet to ensure the tag is added if it doesn't already exist in the array
+                // await Contact.updateOne(
+                //   { _id: contact._id },
+                //   { $addToSet: { tags: tag._id } }  // Store tag as ObjectId
+                // );
 
-                console.log(`Associated tag with contact: ${tag._id}`);
+                // console.log(`Associated tag with contact: ${tag._id}`);
               }
             } catch (error) {
               console.error('Error processing tags:', error);
             }
           }
+
 
 
 

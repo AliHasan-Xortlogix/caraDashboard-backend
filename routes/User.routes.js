@@ -8,30 +8,18 @@ const {
     updateUserProfile,
     forgotPassword,
     resetPassword,
-    logoutUser, getAllUsers
+    logoutUser, getAllUsers, updateUserBySuperadmin, deleteUserBySuperadmin
 } = require('../controllers/user.Controller');
 
 const { isAuthenticatedUser, authorizeRoles } = require('../middleware/jwtToken');
-
-// Register route (public, no authentication required)
-router.post('/register', registerUser);
-
-// Login route (public, no authentication required)
+router.post('/register', isAuthenticatedUser, authorizeRoles('superadmin'), registerUser);
 router.post('/login', loginUser);
-
-// Get the current logged-in user's profile (protected route)
 router.get('/profile', isAuthenticatedUser, getUserProfile);
-router.get('/getall', getAllUsers);
-// Update the logged-in user's profile (protected route)
+router.get('/getall', isAuthenticatedUser, authorizeRoles('superadmin'), getAllUsers);
 router.put('/profile', isAuthenticatedUser, upload.single('image'), updateUserProfile);
-
-// Forgot password route (public, no authentication required)
 router.post('/forgot-password', forgotPassword);
-
-// Reset password route (using the token sent via email) (public)
 router.put('/reset-password/:token', resetPassword);
-
-// Logout route (protected, user must be logged in)
 router.get('/logout', isAuthenticatedUser, logoutUser);
-
+router.put('/edit/:userId', isAuthenticatedUser, authorizeRoles('superadmin'), updateUserBySuperadmin);
+router.delete('/adminuser/:userId', isAuthenticatedUser, authorizeRoles('superadmin'), deleteUserBySuperadmin)
 module.exports = router;
