@@ -216,7 +216,7 @@ console.log(JSON.stringify(customField.value));
                 for (const customField of event.customFields) {
                     if (customField.id) {
                         const customFieldData = await customFieldModels.findOne({ cf_id: customField.id });
-
+console.log("Ye mere wala haa" ,JSON.stringify(customField.value));
                         if (customFieldData) {
                             // Update or insert the custom field for the contact
                             const updateResult = await ContactCustomField.updateOne(
