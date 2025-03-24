@@ -61,7 +61,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                             const customFieldEntry = new ContactCustomField({
                                 contact_id: newContact._id,
                                 user_id: user._id,
-                                custom_field_id: customField.id, // Ensure ObjectId is valid
+                                custom_field_id: customField.id, 
                                 value: customField.value,
                             });
 
