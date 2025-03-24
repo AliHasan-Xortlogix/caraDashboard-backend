@@ -7,7 +7,6 @@ const User = require('../models/user.models');
 
 exports.syncContact = async (req, res) => { // Pass res as a parameter
     const event = req.body;
-    console.log(event)
     try {
         // Ensure the user exists for the given location_id
         const user = await User.findOne({ location_id: event.locationId });
@@ -58,13 +57,23 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                     // Validate custom field ID format
                     if (customField.id) {
                         const customFieldData = await customFieldModels.findOne({ cf_id: customField.id });
+                        let extractedUrls;
+
+                        if (typeof customField.value === "object" && customField.value !== null) {
+                            const urls = Object.values(customField.value)
+                                .filter(item => item && typeof item === "object" && item.url) // Ensure it's a valid object with a URL
+                                .map(item => item.url); // Extract URL values
+
+                            extractedUrls = urls.length === 1 ? urls[0] : urls; // Store single URL as string, multiple as array
+                        } else {
+                            extractedUrls = customField.value; // If not an object, store as is
+                        }
                         if (customFieldData) {
-console.log(JSON.stringify(customField.value));
                             const customFieldEntry = new ContactCustomField({
                                 contact_id: newContact._id,
                                 user_id: user._id,
-                                custom_field_id: customField.id, 
-                                value: customField.value,
+                                custom_field_id: customField.id,
+                                value: extractedUrls,
                             });
 
                             await customFieldEntry.save();
@@ -214,7 +223,7 @@ console.log(JSON.stringify(customField.value));
             // Handle custom fields
             if (event.customFields && event.customFields.length > 0) {
                 for (const customField of event.customFields) {
-                                       if (customField.id) {
+                    if (customField.id) {
                         const customFieldData = await customFieldModels.findOne({ cf_id: customField.id });
                         let extractedUrls;
 
@@ -253,6 +262,7 @@ console.log(JSON.stringify(customField.value));
                         await newCustomField.save();
                         console.log('New custom field added to contact:', contact._id);
                     }
+                }
             }
 
             // Handle tags and store them in the Tag table
