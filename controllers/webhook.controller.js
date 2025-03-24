@@ -7,6 +7,7 @@ const User = require('../models/user.models');
 
 exports.syncContact = async (req, res) => { // Pass res as a parameter
     const event = req.body;
+    console.log(event)
     try {
         // Ensure the user exists for the given location_id
         const user = await User.findOne({ location_id: event.locationId });
