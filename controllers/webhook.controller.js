@@ -254,6 +254,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
 
                         // If no custom field found, create a new custom field entry
                         const newCustomField = new ContactCustomField({
+                            user_id: user._id,
                             contact_id: contact._id,
                             custom_field_id: customField.id,
                             value: extractedUrls,
