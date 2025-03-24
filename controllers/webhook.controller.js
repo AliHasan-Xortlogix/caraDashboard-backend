@@ -214,14 +214,25 @@ console.log(JSON.stringify(customField.value));
             // Handle custom fields
             if (event.customFields && event.customFields.length > 0) {
                 for (const customField of event.customFields) {
-                    if (customField.id) {
+                                       if (customField.id) {
                         const customFieldData = await customFieldModels.findOne({ cf_id: customField.id });
-console.log("Ye mere wala haa" ,JSON.stringify(customField.value));
+                        let extractedUrls;
+
+                        if (typeof customField.value === "object" && customField.value !== null) {
+                            const urls = Object.values(customField.value)
+                                .filter(item => item && typeof item === "object" && item.url) // Ensure it's a valid object with a URL
+                                .map(item => item.url); // Extract URL values
+
+                            extractedUrls = urls.length === 1 ? urls[0] : urls; // Store single URL as string, multiple as array
+                        } else {
+                            extractedUrls = customField.value; // If not an object, store as is
+                        }
+                        console.log('ye extracted haa', extractedUrls);
                         if (customFieldData) {
                             // Update or insert the custom field for the contact
                             const updateResult = await ContactCustomField.updateOne(
                                 { contact_id: contact._id, custom_field_id: customField.id },
-                                { value: customField.value },
+                                { value: extractedUrls },
                                 { upsert: true }
                             );
 
@@ -236,13 +247,12 @@ console.log("Ye mere wala haa" ,JSON.stringify(customField.value));
                         const newCustomField = new ContactCustomField({
                             contact_id: contact._id,
                             custom_field_id: customField.id,
-                            value: customField.value,
+                            value: extractedUrls,
                         });
 
                         await newCustomField.save();
                         console.log('New custom field added to contact:', contact._id);
                     }
-                }
             }
 
             // Handle tags and store them in the Tag table
