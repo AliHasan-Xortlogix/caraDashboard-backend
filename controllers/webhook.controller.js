@@ -24,7 +24,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                 location_id: event.locationId || null,
                 contact_id: event.id || null,
                 name: `${event.firstName} ${event.lastName}` || null,
-                email: event.email.trim(),
+                email: event.email.trim() || null,
                 phone: event.phone || null,
                 address: event.address_1 || null,
                 profile_image: event.profilePhoto || null,
@@ -72,7 +72,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                             const customFieldEntry = new ContactCustomField({
                                 contact_id: newContact._id,
                                 user_id: user._id,
-                                custom_field_id: customField.id,
+                                custom_field_id: customFieldData._id,
                                 value: extractedUrls,
                             });
 
@@ -240,7 +240,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                         if (customFieldData) {
                             // Update or insert the custom field for the contact
                             const updateResult = await ContactCustomField.updateOne(
-                                { contact_id: contact._id, custom_field_id: customField.id },
+                                { contact_id: contact._id, custom_field_id: customFieldData._id },
                                 { value: extractedUrls },
                                 { upsert: true }
                             );
