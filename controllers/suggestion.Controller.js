@@ -26,8 +26,8 @@ exports.getSuggestion = async (req, res) => {
         console.log(`Custom Fields Found:`, customFields);
 
         const response = {
-            tags: tags.map(tag => tag.name),
-            customFields: customFields.map(field => field.cf_name),
+           ...tags.map(tag => tag.name), // Extract tag names
+            ...customFields.map(field => field.cf_name),
         };
 
         if (response.tags.length === 0 && response.customFields.length === 0) {
