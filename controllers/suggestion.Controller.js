@@ -11,30 +11,33 @@ exports.getSuggestion = async (req, res) => {
     try {
         console.log(`Searching for: "${searchTerm}"`);
 
-        // Create the search regex
+        // Create the search regex for case-insensitive partial matching
         const searchRegex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         console.log(`Search Regex: ${searchRegex}`);
 
-        // Fetch matching tags (Case-insensitive & partial match)
+        // Fetch matching tags (case-insensitive & partial match)
         const tags = await Tag.find({ name: searchRegex }).limit(5);
         console.log(`Tags Found:`, tags);
 
-        // Fetch matching custom fields (using regex for partial match)
+        // Fetch matching custom fields (case-insensitive & partial match)
         const customFields = await Customfields.find({
-            cf_name: searchRegex, // Ensure you're using the regex for partial matches
+            cf_name: searchRegex,
         }).limit(5);
         console.log(`Custom Fields Found:`, customFields);
 
-        const response = {
-           ...tags.map(tag => tag.name), // Extract tag names
-            ...customFields.map(field => field.cf_name),
-        };
+        // Ensure that tags and customFields are always arrays, even if no results were found
+        const combinedResults = [
+            ...(tags || []).map(tag => tag.name), // Use an empty array if tags is undefined
+            ...(customFields || []).map(field => field.cf_name) // Use an empty array if customFields is undefined
+        ];
 
-        if (response.tags.length === 0 && response.customFields.length === 0) {
+        // If there are no results for both tags and customFields
+        if (combinedResults.length === 0) {
             return res.status(404).json({ message: 'No matching data found' });
         }
 
-        return res.json(response);
+        // Send the combined results in the response
+        return res.json({ suggestions: combinedResults });
 
     } catch (error) {
         console.error('Error fetching search suggestions:', error);
