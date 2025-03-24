@@ -59,6 +59,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                     if (customField.id) {
                         const customFieldData = await customFieldModels.findOne({ cf_id: customField.id });
                         if (customFieldData) {
+console.log(JSON.stringify(customField.value));
                             const customFieldEntry = new ContactCustomField({
                                 contact_id: newContact._id,
                                 user_id: user._id,
