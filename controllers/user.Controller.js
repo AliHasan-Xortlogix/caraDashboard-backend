@@ -70,9 +70,8 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
 
 // Get all users => /api/v1/users
 exports.getAllUsers = catchAsyncErrors(async (req, res, next) => {
-
     if (req.user.role === 'superadmin') {
-        const users = await User.find();
+        const users = await User.find({ _id: { $ne: req.user._id } }); // Exclude logged-in superadmin
         if (!users || users.length === 0) {
             return next(new ErrorHandler('No users found', 404));
         }
@@ -81,7 +80,6 @@ exports.getAllUsers = catchAsyncErrors(async (req, res, next) => {
             users,
         });
     }
-
 
     if (req.user.role === 'company') {
         const user = await User.findById(req.user._id);
@@ -93,7 +91,6 @@ exports.getAllUsers = catchAsyncErrors(async (req, res, next) => {
             user,
         });
     }
-
 
     return res.status(403).json({
         success: false,
