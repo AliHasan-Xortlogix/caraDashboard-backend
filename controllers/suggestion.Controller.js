@@ -1,6 +1,6 @@
 const Customfields = require('../models/customFields.models');
 const Tag = require("../models/tag");
-const Contactk = require('../models/contactk'); // Assuming the model for Contactk is available
+const Contactk = require('../models/Contact.models');
 
 exports.getSuggestion = async (req, res) => {
     const searchTerm = req.query.q?.trim(); // Trim spaces
