@@ -1,5 +1,6 @@
 const Customfields = require('../models/customFields.models');
 const Tag = require("../models/tag");
+const Contactk = require('../models/contactk'); // Assuming the model for Contactk is available
 
 exports.getSuggestion = async (req, res) => {
     const searchTerm = req.query.q?.trim(); // Trim spaces
@@ -25,13 +26,20 @@ exports.getSuggestion = async (req, res) => {
         }).limit(5);
         console.log(`Custom Fields Found:`, customFields);
 
-        // Ensure that tags and customFields are always arrays, even if no results were found
+        // Fetch matching contactk records (case-insensitive & partial match)
+        const contactkResults = await Contactk.find({
+            name: searchRegex
+        }).limit(5);
+        console.log(`Contactk Results Found:`, contactkResults);
+
+        // Ensure that tags, customFields, and contactkResults are always arrays
         const combinedResults = [
             ...(tags || []).map(tag => tag.name), // Use an empty array if tags is undefined
-            ...(customFields || []).map(field => field.cf_name) // Use an empty array if customFields is undefined
+            ...(customFields || []).map(field => field.cf_name), // Use an empty array if customFields is undefined
+            ...(contactkResults || []).map(contact => contact.name) // Use an empty array if contactkResults is undefined
         ];
 
-        // If there are no results for both tags and customFields
+        // If there are no results for tags, customFields, or contactkResults
         if (combinedResults.length === 0) {
             return res.status(404).json({ message: 'No matching data found' });
         }
@@ -44,4 +52,3 @@ exports.getSuggestion = async (req, res) => {
         return res.status(500).json({ message: 'Error fetching search suggestions', error: error.message });
     }
 };
-
