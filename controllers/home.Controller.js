@@ -41,19 +41,19 @@ const processFile = async (req, res) => {
       const chunk = jsonData.leadsData.slice(start, end);
 
       for (const leadData of chunk) {
-        if (!leadData.email || !leadData.email.trim()) {
-          console.warn(`Skipping entry without email: ${leadData.id}`);
-          continue;
-        }
+        // if (!leadData.email || !leadData.email.trim()) {
+        //   console.warn(`Skipping entry without email: ${leadData.id}`);
+        //   continue;
+        // }
 
-        console.log(`Processing lead with ID: ${leadData.id}, Email: ${leadData.email.trim()}`);
+        console.log(`Processing lead with ID: ${leadData.id}, Email: ${leadData.email?.trim()}`);
 
         // Prepare contact data
         const contactData = {
           location_id: leadData.locationId || null,
           contact_id: leadData.id || null,
           name: leadData.firstName + " " + leadData.lastName || null,
-          email: leadData.email.trim(), // Ensure no spaces
+          email: leadData.email?.trim(), // Ensure no spaces
           phone: leadData.phone || null,
           address: leadData.address_1 || null,
           profile_image: leadData.profilePhoto || null,
@@ -93,46 +93,53 @@ const processFile = async (req, res) => {
             for (const field of leadData.customFields) {
               console.log('Processing custom field:', field);
 
-            
+
               let dbCf = await customFieldModels.findOne({ cf_id: field.id });
-console.log(dbCf)
+              console.log(dbCf)
               if (!dbCf) {
                 console.warn(`Custom Field with ID ${field.id} not found for lead ${leadData.id}`);
-                continue;  
+                continue;
               }
 
               const fieldValueKey = `fieldValue${field.type.charAt(0).toUpperCase() + field.type.slice(1)}`;
 
-       
+
               if (!(fieldValueKey in field)) {
                 console.warn(`No value found for field type ${field.type} in custom field ID ${field.id}`);
-                continue; 
+                continue;
               }
 
-             
+
               let value = field[fieldValueKey];
 
-              
+
               if (value !== undefined && value !== null) {
-                
+                if (dbCf.cf_key === 'contact.project_date') {
+                  console.log('Project Date:', field.fieldValueDate);
+                  await Contact.findOneAndUpdate(
+                    { contact_id: leadData.id },
+                    { $set: { Project_date: new Date(field.fieldValueDate) } },
+                    { new: true }
+                  );
+                }
                 const existingRecord = await ContactCustomField.findOne({
                   contact_id: contact._id,
                   custom_field_id: dbCf._id,
                 });
 
                 if (existingRecord) {
-                
+
                   existingRecord.value = value;
-                  existingRecord.user_id = req.user?.id;  
+                  existingRecord.user_id = req.user?.id;
                   await existingRecord.save();
                   console.log(`Updated value for custom field ID ${field.id} for lead ${leadData.id}`);
                 } else {
-             
+
                   await ContactCustomField.create({
-                    contact_id: contact._id,  
+                    contact_id: contact._id,
                     custom_field_id: dbCf._id,
-                    value: value, 
-                    user_id: req.user?.id,  
+                    value: value,
+                    user_id: req.user?.id,
                   });
                   console.log(`Stored value for custom field ID ${field.id} for lead ${leadData.id}`);
                 }
