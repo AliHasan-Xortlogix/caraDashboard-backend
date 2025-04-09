@@ -8,7 +8,7 @@ const ObjectId = mongoose.Types.ObjectId; // Get ObjectId
 
 const getContactsWithCustomFields = async (req, res) => {
     try {
-        const { page = 1, limit = 10, tags, startDate, endDate, sortName, sortDate } = req.query; // Default to page 1 and limit 10 if not provided
+        const { page = 1, limit = 16, tags, startDate, endDate, sortName, sortDate } = req.query; // Default to page 1 and limit 10 if not provided
 
         const user_id = req.user._id;
         console.log(user_id);
