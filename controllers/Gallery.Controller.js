@@ -82,39 +82,26 @@ const getContactsWithCustomFields = async (req, res) => {
             console.log("Formatted End Date:", parsedEndDate);
 
             // Ensure the custom field "Project Date" exists
-            const projectDateField = await CustomFields.findOne({ cf_name: "Project date" });
+            // const projectDateField = await CustomFields.findOne({ cf_name: "Project date" });
+            let dateFilter = {};
 
-            if (projectDateField) {
-                const projectDateFieldId = projectDateField._id;
-                let dateFilterCondition = { custom_field_id: projectDateFieldId };
-
-                if (parsedStartDate && parsedEndDate) {
-                    // If both dates exist, filter within range
-                    dateFilterCondition.value = { $gte: parsedStartDate, $lte: parsedEndDate };
-                } else if (parsedStartDate) {
-                    // If only startDate exists, filter for exact match
-                    dateFilterCondition.value = parsedStartDate;
-                }
-
-                // Fetch contacts based on the Project Date filter
-                const dateFilteredContacts = await ContactCustomFields.find(dateFilterCondition);
-                console.log("Matching Contacts for Project Date:", dateFilteredContacts);
-
-                // Store matching contact IDs
-                const dateMatchedContactIds = dateFilteredContacts.map(entry => entry.contact_id);
-
-                if (dateMatchedContactIds.length > 0) {
-                    orConditions.push({ _id: { $in: dateMatchedContactIds.map(id => new ObjectId(id)) } });
-                }
-            } else {
-                console.error("No 'Project date' custom field found.");
+            if (parsedStartDate) {
+                dateFilter.$gte = parsedStartDate;
             }
+            if (parsedEndDate) {
+                // parsedEndDate.setDate(parsedEndDate.getDate() + 1); // Include the full day
+                dateFilter.$lte = parsedEndDate;
+            }
+
+            query.$and = query.$and || []; // Ensure $and exists
+            query.$and.push({ Project_date: dateFilter });
+           
         }
 
         // If there are matching contact IDs, apply the filter
-        if (dateMatchedContactIds.length > 0) {
-            orConditions.push({ _id: { $in: dateMatchedContactIds.map(id => new ObjectId(id)) } });
-        }
+        // if (dateMatchedContactIds.length > 0) {
+        //     orConditions.push({ _id: { $in: dateMatchedContactIds.map(id => new ObjectId(id)) } });
+        // }
 
         /*** ✅ Filter by Name ***/
 
@@ -211,7 +198,7 @@ const getContactsWithCustomFields = async (req, res) => {
                     standardFields[fieldName] = fieldValues[cfId] || null;
                 }
             });
-           // console.log(settingmapcfIds);
+            // console.log(settingmapcfIds);
             customCustomFields = settingmapcfIds.map(({ cf_id, cf_name }) => ({
 
                 label: cf_name,
@@ -266,7 +253,6 @@ const getContactsWithCustomFields = async (req, res) => {
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 };
-
 // const getContactsWithCustomFields = async (req, res) => {
 //     try {
 //         const {
