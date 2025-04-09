@@ -11,7 +11,7 @@ const getContactsWithCustomFields = async (req, res) => {
         const { page = 1, limit = 16, tags, startDate, endDate, sortName, sortDate } = req.query; // Default to page 1 and limit 10 if not provided
 
         const user_id = req.user._id;
-        console.log(user_id);
+
 
         const user = await User.findById(user_id);
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -127,11 +127,18 @@ const getContactsWithCustomFields = async (req, res) => {
         if (sortName && sortName.toLowerCase() === "desc") {
             sortDirection = -1;
         }
-
+        let sortDateDirection = 1; // Default: ascending
+        if (sortDate && sortDate.toLowerCase() === "desc") {
+            sortDateDirection = -1;
+        }
+        console.log("Sort Direction:", sortDateDirection);
         console.log("Final Query:", JSON.stringify(query, null, 2));
 
         const contacts = await Contacts.find(query)
-            .sort({ name: sortDirection }) // Sort by name
+            .sort({
+                Project_date: sortDateDirection, // Sort by Project_date first
+                name: sortDirection
+            }) // Sort by name
             .skip(skip)
             .limit(Number(limit));
 
@@ -160,14 +167,14 @@ const getContactsWithCustomFields = async (req, res) => {
                 cf_id: customField ? customField._id.toString() : field.cf_id // Replace cf_id with _id if found
             });
         }
-        console.log('ss', settingmapcfIds);
+        //console.log('ss', settingmapcfIds);
         const displayCfIds = displayFields.map(field => field.cf_id);
         const customFieldsid = await CustomFields.find({
             cf_id: { $in: displayCfIds }
         });
         const selectedcustomFieldIds = customFieldsid.map(field => field.id);
         const customFieldcfIds = customFields.map(field => field.id);
-        console.log('custoMFieldIds', customFieldcfIds, selectedcustomFieldIds);
+        //console.log('custoMFieldIds', customFieldcfIds, selectedcustomFieldIds);
         const contactIds = contacts.map(contact => contact.id);
         const allCustomFieldIds = [...customFieldcfIds, ...selectedcustomFieldIds];
         const allCustomFieldValues = await ContactCustomFields.find({
@@ -176,16 +183,16 @@ const getContactsWithCustomFields = async (req, res) => {
             custom_field_id: { $in: allCustomFieldIds }
 
         });
-        console.log('allCustomFieldValues', allCustomFieldValues)
+        //console.log('allCustomFieldValues', allCustomFieldValues)
         const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
             if (!acc[field.contact_id]) acc[field.contact_id] = {};
             acc[field.contact_id][field.custom_field_id] = field.value || null;
             return acc;
         }, {});
-        console.log("jiu", contactFieldMap)
+        // console.log("jiu", contactFieldMap)
         let formattedContacts = contacts.map(contact => {
             const fieldValues = contactFieldMap[contact.id] || {};
-            console.log(fieldValues, fieldMap);
+            //console.log(fieldValues, fieldMap);
             let standardFields = {
                 projectDate: null,
                 startTime: null,
@@ -204,7 +211,7 @@ const getContactsWithCustomFields = async (req, res) => {
                     standardFields[fieldName] = fieldValues[cfId] || null;
                 }
             });
-            console.log(settingmapcfIds);
+           // console.log(settingmapcfIds);
             customCustomFields = settingmapcfIds.map(({ cf_id, cf_name }) => ({
 
                 label: cf_name,
@@ -236,7 +243,7 @@ const getContactsWithCustomFields = async (req, res) => {
                 ? new Date(b.standardCustomFields.projectDate)
                 : null;
 
-            console.log(aDate, bDate);
+            //console.log(aDate, bDate);
 
             if (!aDate && !bDate) return 0; // If both are null, keep order
             if (!aDate) return 1; // Move null dates to the end
