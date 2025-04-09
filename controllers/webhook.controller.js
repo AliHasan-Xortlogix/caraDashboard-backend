@@ -159,7 +159,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
             }
             // Prepare updated contact details
-            const updatedContact = CreateContactData(event);
+            const updatedContact = contactCreateData(event);
             // Update the contact
             await Contact.updateOne({ contact_id: event.id }, updatedContact);
 
