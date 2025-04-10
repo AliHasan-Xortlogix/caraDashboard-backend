@@ -208,7 +208,7 @@ const getContactsWithCustomFields = async (req, res) => {
 
             return {
                 basicContactData: {
-                    id: contact.id,
+                    id: contact.id,contact_id: contact.contact_id,
                     name: contact.name || "No Name",
                     location: contact.location || null,
                     vendor: contact.vendor || null,
