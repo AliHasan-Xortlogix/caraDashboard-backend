@@ -62,7 +62,7 @@ console.log(event);
                     );
                 }
                 if (fieldData.cf_key === 'contact.cover_image') {
-console.log(object);
+console.log(typeof value );
                     if (typeof value === 'object' && value !== null) {
                         try {
                             const parsed = JSON.parse(JSON.stringify(value, null, 2));
