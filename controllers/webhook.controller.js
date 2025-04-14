@@ -51,7 +51,7 @@ console.log(event);
                     .filter(v => v?.url)
                     .map(v => v.url)
                 : field.value;
-
+console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2));
             if (Array.isArray(value) && value.length === 1) value = value[0];
 
             if (fieldData) {
