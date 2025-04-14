@@ -61,7 +61,7 @@ const getContactFromGHL = async (locationId, accessToken) => {
         for (const field of event.customFields) {
             if (!field.id) continue;
             console.log('ye wo ha jo main kya' );
-            console.log(JSON.stringify(value, null, 2));
+            console.log(JSON.stringify(field.value, null, 2));
             const fieldData = await customFieldModels.findOne({ cf_id: field.id });
             let value = typeof field.value === 'object' && field.value !== null
                 ? Object.values(field.value)
