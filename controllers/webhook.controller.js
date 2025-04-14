@@ -4,28 +4,12 @@ const Tag = require('../models/tag');
 const ContactCustomField = require('../models/ContactCutsomField.models');
 const customFieldModels = require('../models/customFields.models');
 const User = require('../models/user.models');
-const winston = require('winston');
 
-// Set up Winston logging
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp(),
-        winston.format.printf(({ timestamp, level, message }) => {
-            return `${timestamp} ${level}: ${message}`;
-        })
-    ),
-    transports: [
-        new winston.transports.Console(), // Log to console
-        new winston.transports.File({ filename: 'app.log' }) // Log to a file
-    ]
-});
-
-exports.syncContact = async (req, res) => {
+exports.syncContact = async (req, res) => { // Pass res as a parameter
     const event = req.body;
-
     function contactCreateData(event) {
+
+        // Create the contact
         let createData = new Contact({
             location_id: event.locationId || null,
             contact_id: event.id || null,
@@ -56,13 +40,12 @@ exports.syncContact = async (req, res) => {
         });
         return createData;
     }
-
     async function handleCustomFields(event, contact, user) {
         if (!event.customFields || event.customFields.length === 0) return;
 
         for (const customField of event.customFields) {
             if (!customField.id) {
-                logger.error('Invalid ObjectId for custom field ID:', customField.id);
+                console.error('Invalid ObjectId for custom field ID:', customField.id);
                 continue;
             }
 
@@ -78,11 +61,11 @@ exports.syncContact = async (req, res) => {
                 extractedUrls = customField.value;
             }
 
-            logger.info('Extracted custom field value:', extractedUrls);
+            console.log('Extracted custom field value:', extractedUrls);
 
             if (customFieldData) {
                 if (customFieldData.cf_name == 'Project Date') {
-                    logger.info('Project Date:', extractedUrls);
+                    console.log('Project Date:', extractedUrls);
                     await Contact.findOneAndUpdate(
                         { contact_id: event.id },
                         { $set: { Project_date: new Date(extractedUrls) } },
@@ -96,11 +79,11 @@ exports.syncContact = async (req, res) => {
                 );
 
                 if (updateResult.upsertedCount > 0) {
-                    logger.info('New custom field created for contact:', contact._id);
+                    console.log('New custom field created for contact:', contact._id);
                 }
             } else {
                 if (customFieldData.cf_name == 'Project Date') {
-                    logger.info('Project Date:', extractedUrls);
+                    console.log('Project Date:', extractedUrls);
                     await Contact.findOneAndUpdate(
                         { contact_id: event.id },
                         { $set: { Project_date: new Date(extractedUrls) } },
@@ -115,7 +98,7 @@ exports.syncContact = async (req, res) => {
                 });
 
                 await newCustomField.save();
-                logger.info('New custom field added to contact:', contact._id);
+                console.log('New custom field added to contact:', contact._id);
             }
         }
     }
@@ -139,67 +122,68 @@ exports.syncContact = async (req, res) => {
                     location_id: event.locationId,
                     user_id: user._id,
                 });
-                logger.info('Created new tag:', trimmedTagName);
+                console.log('Created new tag:', trimmedTagName);
             } else {
-                logger.info('Tag already exists:', trimmedTagName);
+                console.log('Tag already exists:', trimmedTagName);
             }
 
             tagIds.push(tag._id);
         }
 
         await contact.save();
-        logger.info('Tags updated for contact:', contact._id);
+        console.log('Tags updated for contact:', contact._id);
     }
-
     try {
+        // Ensure the user exists for the given location_id
         const user = await User.findOne({ location_id: event.locationId });
         if (!user) {
-            logger.error('User not found for location_id:', event.locationId);
+            console.error('User not found for location_id:', event.locationId);
             return res.status(400).json({ error: `User not found for location_id: ${event.locationId}` });
         }
 
+        // Handle ContactCreate
         if (event.type === 'ContactCreate') {
-            logger.info('Processing ContactCreate event');
+            console.log(event.type === 'ContactCreate')
             let newContact = contactCreateData(event);
             await newContact.save();
             await handleCustomFields(event, newContact, user);
             await handleTags(event, newContact, user);
+
         }
 
+        // Handle ContactUpdate
         if (event.type === 'ContactUpdate') {
-                        // const contact = await Contact.findOne({ contact_id: event.id });
-            // if (!contact) {
-            //     logger.error('Contact not found for ID:', event.id);
-            //     return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
-            // }
-            // const updatedContact = contactCreateData(event);
-            // await Contact.updateOne({ contact_id: event.id }, updatedContact);
-            const updatedContact = contactCreateData(event);
-            await Contact.findOneAndUpdate(
-                { contact_id: event.id },
-                { $set: updatedContact },
-                { new: true }
-            );
             const contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
-                logger.error('Contact not found for ID:', event.id);
+                console.error('Contact not found for ID:', event.id);
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
             }
+            // Prepare updated contact details
+            const updatedContact = CreateContactData(event);
+            // Update the contact
+            await Contact.updateOne({ contact_id: event.id }, updatedContact);
 
             await handleCustomFields(event, contact, user);
             await handleTags(event, contact, user);
         }
 
+
+        // Handle ContactTagUpdate
         if (event.type === 'ContactTagUpdate') {
             const contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
-                logger.error('Contact not found for ID:', event.id);
+                console.error('Contact not found for ID:', event.id);
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
             }
 
+            // Create an array to hold all the tag names
             const tagNames = [];
+
+            // Loop through each tag name in the event
             for (const tagName of event.tags) {
                 const trimmedTagName = tagName.trim();
+
+                // Try to find the tag by name, user_id, and location_id
                 let tag = await Tag.findOne({
                     name: trimmedTagName,
                     user_id: user._id,
@@ -207,32 +191,39 @@ exports.syncContact = async (req, res) => {
                 });
 
                 if (!tag) {
+                    // If the tag does not exist, create a new one
                     tag = await Tag.create({
                         name: trimmedTagName,
                         location_id: event.locationId,
                         user_id: user._id,
                     });
-                    logger.info('Created new tag:', trimmedTagName);
+                    console.log('Created new tag:', trimmedTagName);
+                } else {
+                    console.log('Tag already exists:', trimmedTagName);
                 }
 
+                // Add the tag name to the tagNames array if the tag doesn't already exist
                 if (!tagNames.includes(trimmedTagName)) {
                     tagNames.push(trimmedTagName);
                 }
             }
 
-            const tagNamesString = tagNames.join(', ');
 
+            // Convert the array of tag names into a single string with commas
+            const tagNamesString = tagNames.join(', ');  // Convert array to string
+
+            // Update the contact with the concatenated tag names string
             await Contact.updateOne(
                 { _id: contact._id },
-                { $set: { tags: tagNamesString } }
+                { $set: { tags: tagNamesString } } // Store the string of tags instead of an array
             );
-            logger.info(`Associated tags with contact: ${tagNamesString}`);
+            console.log(`Associated tags with contact: ${tagNamesString}`);
         }
-
+        // Respond with a success message
         res.status(200).json({ message: "Contact sync complete." });
 
     } catch (error) {
-        logger.error('Error syncing contact:', error);
+        console.error('Error syncing contact:', error);
         return res.status(500).json({ error: `Error syncing contact: ${error.message}` });
     }
 };
