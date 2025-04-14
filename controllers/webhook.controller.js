@@ -153,6 +153,7 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
 
         // Handle ContactUpdate
         if (event.type === 'ContactUpdate') {
+            console.log(event);
             const contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
                 console.error('Contact not found for ID:', event.id);
@@ -161,7 +162,8 @@ exports.syncContact = async (req, res) => { // Pass res as a parameter
             // Prepare updated contact details
             const updatedContact = contactCreateData(event);
             // Update the contact
-            await Contact.updateOne({ contact_id: event.id }, updatedContact);
+            const { _id, ...safeToUpdate } = updatedContact;
+            await Contact.findByIdAndUpdate(contact._id, safeToUpdate);
 
             await handleCustomFields(event, contact, user);
             await handleTags(event, contact, user);
