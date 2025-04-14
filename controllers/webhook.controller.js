@@ -19,6 +19,7 @@ exports.syncContact = async (req, res) => {
             address: event.address1 || null,
             profile_image: event.profilePhoto || null,
             city: event.city || null,
+            tags: event.tags?.join(",") || null,
             state: event.state || null,
             country: event.country || null,
             company: event.companyName || null,
