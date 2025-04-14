@@ -45,8 +45,6 @@ exports.syncContact = async (req, res) => {
 
         for (const field of event.customFields) {
             if (!field.id) continue;
-            console.log('ye wo ha jo main kya' );
-            console.log(JSON.stringify(field.value, null, 2));
             const fieldData = await customFieldModels.findOne({ cf_id: field.id });
             let value = typeof field.value === 'object' && field.value !== null
                 ? Object.values(field.value)
@@ -119,16 +117,20 @@ exports.syncContact = async (req, res) => {
             return res.status(400).json({ error: `User not found for location_id: ${event.locationId}` });
         }
 
-       
-
         let contact;
 
         if (event.type === 'ContactCreate') {
+            if (!Array.isArray(contact.tags) || !contact.tags.includes("show in gallery")) {
+                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
+            }
             const newContact = createContactData(event);
             contact = await newContact.save();
         }
 
         if (event.type === 'ContactUpdate') {
+            if (!Array.isArray(contact.tags) || !contact.tags.includes("show in gallery")) {
+                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
+            }
             contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
@@ -139,6 +141,9 @@ exports.syncContact = async (req, res) => {
         }
 
         if (event.type === 'ContactTagUpdate') {
+            if (!Array.isArray(contact.tags) || !contact.tags.includes("show in gallery")) {
+                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
+            }
             contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
