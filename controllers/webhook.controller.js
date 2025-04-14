@@ -61,18 +61,19 @@ console.log(event);
                         { $set: { Project_date: new Date(value) } }
                     );
                 }
-    if (fieldData.cf_key === 'cover_image') {
-        if (typeof value === 'object' && value !== null) {
-            try {
-                const parsed = JSON.parse(JSON.stringify(value, null, 2));
-                if (Array.isArray(parsed)) {
-                    value = parsed[0];
+                if (fieldData.cf_key === 'cover_image') {
+console.log(object);
+                    if (typeof value === 'object' && value !== null) {
+                        try {
+                            const parsed = JSON.parse(JSON.stringify(value, null, 2));
+                            if (Array.isArray(parsed)) {
+                                value = parsed[0];
+                            }
+                        } catch (err) {
+                            console.error('Failed to stringify/parse value:', err);
+                        }
+                    }
                 }
-            } catch (err) {
-                console.error('Failed to stringify/parse value:', err);
-            }
-        }
-    }
                 await ContactCustomField.updateOne(
                     { contact_id: contact._id, custom_field_id: fieldData._id },
                     { value },
@@ -87,18 +88,19 @@ console.log(event);
                         { new: true }
                     );
                 }
-    if (fieldData.cf_key === 'cover_image') {
-        if (typeof value === 'object' && value !== null) {
-            try {
-                const parsed = JSON.parse(JSON.stringify(value, null, 2));
-                if (Array.isArray(parsed)) {
-                    value = parsed[0];
-                }
-            } catch (err) {
-                console.error('Failed to stringify/parse value:', err);
-            }
-        }
-    }       const newCustomField = new ContactCustomField({
+                if (fieldData.cf_key === 'cover_image') {
+                    if (typeof value === 'object' && value !== null) {
+                        try {
+                            const parsed = JSON.parse(JSON.stringify(value, null, 2));
+                            if (Array.isArray(parsed)) {
+                                value = parsed[0];
+                            }
+                        } catch (err) {
+                            console.error('Failed to stringify/parse value:', err);
+                        }
+                    }
+                }   
+                    const newCustomField = new ContactCustomField({
                     user_id: user._id,
                     contact_id: contact._id,
                     custom_field_id: field.id,
