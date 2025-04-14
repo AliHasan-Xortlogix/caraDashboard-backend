@@ -167,7 +167,7 @@ console.log(typeof value );
 
         // Fetch custom fields from GoHighLevel API
         const ghlContact = await getContactFromGHL(locationId, accessToken);
-        console.log(JSON.stringify(ghlContact, null, 2))
+        console.log(ghlContact)
 
         let contact;
 
