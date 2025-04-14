@@ -140,6 +140,18 @@ console.log(typeof value );
             return res.status(400).json({ error: `User not found for location_id: ${event.locationId}` });
         }
 
+        const locationId = user.location_id;
+        console.log(user, locationId)
+        // Fetch the accessToken based on the locationId from Ghlauth model
+        const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
+        if (!ghlauthRecord || !ghlauthRecord.access_token) {
+            return res.status(400).json({ error: 'Access token not found for this location' });
+        }
+        const accessToken = ghlauthRecord.access_token;
+
+        // Fetch custom fields from GoHighLevel API
+        const ghlContact = await getCustomFieldsFromGHL(locationId, accessToken);
+        console.log(customFields)
         let contact;
 
         if (event.type === 'ContactCreate') {
