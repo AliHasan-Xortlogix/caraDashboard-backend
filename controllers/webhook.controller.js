@@ -15,7 +15,7 @@ console.log(event);
             name: `${event.firstName} ${event.lastName}`.trim() || null,
             email: event.email?.trim() || null,
             phone: event.phone || null,
-            address: event.address_1 || null,
+            address: event.address1 || null,
             profile_image: event.profilePhoto || null,
             city: event.city || null,
             state: event.state || null,
