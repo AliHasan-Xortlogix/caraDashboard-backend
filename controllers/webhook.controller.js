@@ -52,7 +52,7 @@ console.log(event);
                     .map(v => v.url)
                 : field.value;
 console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2));
-            if (Array.isArray(value) && value.length === 1) value = value[0];
+            // if (Array.isArray(value) && value.length === 1) value = value[0];
 
             if (fieldData) {
                 if (fieldData.cf_key === 'contact.project_date') {
@@ -63,6 +63,7 @@ console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2
                 }
     // If cf_key is 'cover_image' and value is array, keep only the first item
     if (fieldData.cf_key === 'cover_image' && Array.isArray(value)) {
+console.log(value[0]);
         value = value[0];
     }
                 await ContactCustomField.updateOne(
