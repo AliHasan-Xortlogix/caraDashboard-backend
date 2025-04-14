@@ -120,7 +120,7 @@ exports.syncContact = async (req, res) => {
         let contact;
 
         if (event.type === 'ContactCreate') {
-            if (!Array.isArray(contact.tags) || !contact.tags.includes("show in gallery")) {
+            if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
                 return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
             }
             const newContact = createContactData(event);
@@ -128,7 +128,7 @@ exports.syncContact = async (req, res) => {
         }
 
         if (event.type === 'ContactUpdate') {
-            if (!Array.isArray(contact.tags) || !contact.tags.includes("show in gallery")) {
+            if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
                 return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
             }
             contact = await Contact.findOne({ contact_id: event.id });
@@ -141,7 +141,7 @@ exports.syncContact = async (req, res) => {
         }
 
         if (event.type === 'ContactTagUpdate') {
-            if (!Array.isArray(contact.tags) || !contact.tags.includes("show in gallery")) {
+            if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
                 return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
             }
             contact = await Contact.findOne({ contact_id: event.id });
