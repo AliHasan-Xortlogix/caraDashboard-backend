@@ -61,7 +61,10 @@ console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2
                         { $set: { Project_date: new Date(value) } }
                     );
                 }
-
+    // If cf_key is 'cover_image' and value is array, keep only the first item
+    if (fieldData.cf_key === 'cover_image' && Array.isArray(value)) {
+        value = value[0];
+    }
                 await ContactCustomField.updateOne(
                     { contact_id: contact._id, custom_field_id: fieldData._id },
                     { value },
@@ -76,6 +79,10 @@ console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2
                         { new: true }
                     );
                 }
+    // If cf_key is 'cover_image' and value is array, keep only the first item
+    if (fieldData.cf_key === 'cover_image' && Array.isArray(value)) {
+        value = value[0];
+    }
                 const newCustomField = new ContactCustomField({
                     user_id: user._id,
                     contact_id: contact._id,
