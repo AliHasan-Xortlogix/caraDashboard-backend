@@ -5,6 +5,8 @@ const ContactCustomField = require('../models/ContactCutsomField.models');
 const customFieldModels = require('../models/customFields.models');
 const User = require('../models/user.models');
 const Ghlauth = require('../models/Ghlauth.models');
+const axios = require('axios');
+
 exports.syncContact = async (req, res) => {
     const event = req.body;
 console.log(event);
