@@ -4,10 +4,24 @@ const Tag = require('../models/tag');
 const ContactCustomField = require('../models/ContactCutsomField.models');
 const customFieldModels = require('../models/customFields.models');
 const User = require('../models/user.models');
-
+const Ghlauth = require('../models/Ghlauth.models');
 exports.syncContact = async (req, res) => {
     const event = req.body;
 console.log(event);
+const getContactFromGHL = async (locationId, accessToken) => {
+    try {
+        const response = await axios.get(`https://services.leadconnectorhq.com/contacts/${event.id}?location_id=${locationId}`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Version': '2021-07-28', // API version
+            },
+        });
+        return response.data.contact; // Return the custom fields data
+    } catch (error) {
+        console.error('Error fetching Contact from GHL:', error);
+        throw new Error('Failed to fetch custom fields');
+    }
+};
     const createContactData = (event) => {
         return new Contact({
             location_id: event.locationId || null,
@@ -150,8 +164,9 @@ console.log(typeof value );
         const accessToken = ghlauthRecord.access_token;
 
         // Fetch custom fields from GoHighLevel API
-        const ghlContact = await getCustomFieldsFromGHL(locationId, accessToken);
-        console.log(customFields)
+        const ghlContact = await getContactFromGHL(locationId, accessToken);
+        console.log(JSON.stringify(ghlContact, null, 2))
+
         let contact;
 
         if (event.type === 'ContactCreate') {
