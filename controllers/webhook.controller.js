@@ -167,13 +167,24 @@ exports.syncContact = async (req, res) => {
         }
 
         if (event.type === 'ContactUpdate') {
+                        // const contact = await Contact.findOne({ contact_id: event.id });
+            // if (!contact) {
+            //     logger.error('Contact not found for ID:', event.id);
+            //     return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
+            // }
+            // const updatedContact = contactCreateData(event);
+            // await Contact.updateOne({ contact_id: event.id }, updatedContact);
+            const updatedContact = contactCreateData(event);
+            await Contact.findOneAndUpdate(
+                { contact_id: event.id },
+                { $set: updatedContact },
+                { new: true }
+            );
             const contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
                 logger.error('Contact not found for ID:', event.id);
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
             }
-            const updatedContact = contactCreateData(event);
-            await Contact.updateOne({ contact_id: event.id }, updatedContact);
 
             await handleCustomFields(event, contact, user);
             await handleTags(event, contact, user);
