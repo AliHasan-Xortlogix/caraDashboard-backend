@@ -61,7 +61,7 @@ console.log(event);
                         { $set: { Project_date: new Date(value) } }
                     );
                 }
-                if (fieldData.cf_key === 'cover_image') {
+                if (fieldData.cf_key === 'contact.cover_image') {
 console.log(object);
                     if (typeof value === 'object' && value !== null) {
                         try {
