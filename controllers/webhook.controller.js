@@ -7,7 +7,7 @@ const User = require('../models/user.models');
 
 exports.syncContact = async (req, res) => {
     const event = req.body;
-
+console.log(event);
     const createContactData = (event) => {
         return new Contact({
             location_id: event.locationId || null,
@@ -55,7 +55,7 @@ exports.syncContact = async (req, res) => {
             if (Array.isArray(value) && value.length === 1) value = value[0];
 
             if (fieldData) {
-                if (fieldData.cf_name === 'Project Date') {
+                if (fieldData.cf_key === 'contact.project_date') {
                     await Contact.findOneAndUpdate(
                         { contact_id: event.id },
                         { $set: { Project_date: new Date(value) } }
@@ -68,6 +68,14 @@ exports.syncContact = async (req, res) => {
                     { upsert: true }
                 );
             } else {
+                if (customFieldData.cf_key === 'contact.project_date') {
+                    console.log('Project Date:', extractedUrls);
+                    await Contact.findOneAndUpdate(
+                        { contact_id: event.id },
+                        { $set: { Project_date: new Date(extractedUrls) } },
+                        { new: true }
+                    );
+                }
                 const newCustomField = new ContactCustomField({
                     user_id: user._id,
                     contact_id: contact._id,
