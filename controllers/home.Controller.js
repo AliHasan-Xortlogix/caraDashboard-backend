@@ -45,7 +45,10 @@ const processFile = async (req, res) => {
         //   console.warn(`Skipping entry without email: ${leadData.id}`);
         //   continue;
         // }
-
+            if (!Array.isArray(leadData.tags) || !leadData.tags.includes("show in gallery")) {
+                  console.warn(`Skipping entry without required : ${leadData.id}`);
+                  continue;
+            }
         console.log(`Processing lead with ID: ${leadData.id}, Email: ${leadData.email?.trim()}`);
 
         // Prepare contact data
