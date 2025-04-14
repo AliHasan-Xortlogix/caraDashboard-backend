@@ -9,21 +9,6 @@ const axios = require('axios');
 
 exports.syncContact = async (req, res) => {
     const event = req.body;
-console.log(event);
-const getContactFromGHL = async (locationId, accessToken) => {
-    try {
-        const response = await axios.get(`https://services.leadconnectorhq.com/contacts/${event.id}?location_id=${locationId}`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Version': '2021-07-28', // API version
-            },
-        });
-        return response.data.contact; // Return the custom fields data
-    } catch (error) {
-        console.error('Error fetching Contact from GHL:', error);
-        throw new Error('Failed to fetch custom fields');
-    }
-};
     const createContactData = (event) => {
         return new Contact({
             location_id: event.locationId || null,
@@ -65,7 +50,7 @@ const getContactFromGHL = async (locationId, accessToken) => {
             const fieldData = await customFieldModels.findOne({ cf_id: field.id });
             let value = typeof field.value === 'object' && field.value !== null
                 ? Object.values(field.value)
-                    .filter(v => v?.url)
+                    .filter(v => v?.url && !v.meta?.deleted) // Skip if deleted
                     .map(v => v.url)
                 : field.value;
             console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2));
@@ -78,19 +63,7 @@ const getContactFromGHL = async (locationId, accessToken) => {
                         { $set: { Project_date: new Date(value) } }
                     );
                 }
-                if (fieldData.cf_key === 'contact.cover_image') {
-console.log(typeof value );
-                    if (typeof value === 'object' && value !== null) {
-                        try {
-                            const parsed = JSON.parse(JSON.stringify(value, null, 2));
-                            if (Array.isArray(parsed)) {
-                                value = parsed[0];
-                            }
-                        } catch (err) {
-                            console.error('Failed to stringify/parse value:', err);
-                        }
-                    }
-                }
+
                 await ContactCustomField.updateOne(
                     { contact_id: contact._id, custom_field_id: fieldData._id },
                     { value },
@@ -105,18 +78,7 @@ console.log(typeof value );
                         { new: true }
                     );
                 }
-                if (fieldData.cf_key === 'cover_image') {
-                    if (typeof value === 'object' && value !== null) {
-                        try {
-                            const parsed = JSON.parse(JSON.stringify(value, null, 2));
-                            if (Array.isArray(parsed)) {
-                                value = parsed[0];
-                            }
-                        } catch (err) {
-                            console.error('Failed to stringify/parse value:', err);
-                        }
-                    }
-                }   
+                
                     const newCustomField = new ContactCustomField({
                     user_id: user._id,
                     contact_id: contact._id,
@@ -157,18 +119,7 @@ console.log(typeof value );
             return res.status(400).json({ error: `User not found for location_id: ${event.locationId}` });
         }
 
-        const locationId = user.location_id;
-        console.log(user, locationId)
-        // Fetch the accessToken based on the locationId from Ghlauth model
-        const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
-        if (!ghlauthRecord || !ghlauthRecord.access_token) {
-            return res.status(400).json({ error: 'Access token not found for this location' });
-        }
-        const accessToken = ghlauthRecord.access_token;
-
-        // Fetch custom fields from GoHighLevel API
-        const ghlContact = await getContactFromGHL(locationId, accessToken);
-        console.log(ghlContact)
+       
 
         let contact;
 
