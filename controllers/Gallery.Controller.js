@@ -211,6 +211,7 @@ const getContactsWithCustomFields = async (req, res) => {
                     id: contact.id,
                     contact_id: contact.contact_id,
                     location_id: contact.location_id,
+                    address: contact.address || null,
                     name: contact.name || "No Name",
                     location: contact.location || null,
                     vendor: contact.vendor || null,
