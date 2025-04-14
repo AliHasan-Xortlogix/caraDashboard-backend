@@ -128,10 +128,11 @@ exports.syncContact = async (req, res) => {
             contact = await newContact.save();
         }
 
-        if (event.type === 'ContactUpdate') {
+        if (event.type === 'ContactUpdate' ||event.type === 'ContactTagUpdate' ) {
             if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
                 return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
             }
+            console.log('Ye tags hain ',event.tags);
             contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
