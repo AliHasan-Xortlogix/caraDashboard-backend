@@ -4,6 +4,7 @@ const ContactCustomFields = require('../models/ContactCutsomField.models');
 const CustomFields = require('../models/customFields.models');
 const User = require('../models/user.models')
 const mongoose = require('mongoose'); // Import mongoose
+const { Console } = require('winston/lib/winston/transports');
 const ObjectId = mongoose.Types.ObjectId; // Get ObjectId
 
 const getContactsWithCustomFields = async (req, res) => {
@@ -121,20 +122,35 @@ const getContactsWithCustomFields = async (req, res) => {
         console.log("Sort Direction:", sortDateDirection);
         console.log("Final Query:", JSON.stringify(query, null, 2));
 
-        const contacts = await Contacts.find(query)
-            .sort({
-                Project_date: sortDateDirection, // Sort by Project_date first
-                name: sortDirection
-            }) // Sort by name
-            .skip(skip)
-            .limit(Number(limit));
+        const totalContactsQuery = await Contacts.countDocuments(query); // Get the total contacts count based on the query
+        let contacts;
+
+        if (limit == 0) {
+            // Show all contacts without pagination
+            contacts = await Contacts.find(query)
+                .sort({
+                    Project_date: sortDateDirection,
+                    name: sortDirection,
+                })
+                .limit(totalContactsQuery); // Fetch all contacts
+        } else {
+            // Paginated contacts
+            contacts = await Contacts.find(query)
+                .sort({
+                    Project_date: sortDateDirection,
+                    name: sortDirection,
+                })
+                .skip(skip)
+                .limit(Number(limit));
+        }
+
 
         //console.log("Contacts:", contacts);
         if (!contacts.length) return res.status(404).json({ message: "No contacts found" });
 
-        const fieldNames = ["Cover Image", "Project date", "startTime", "finishTime", "related images"];
+        const fieldNames = ["contact.cover_image", "contact.project_date", "contact.start_time", "contact.finish_time", "contact.related_images"];
 
-        const customFields = await CustomFields.find({ cf_name: { $in: fieldNames } });
+        const customFields = await CustomFields.find({ cf_key: { $in: fieldNames } });
 
         const fieldMap = customFields.reduce((acc, field) => {
             acc[field.cf_name] = field.id;
@@ -211,12 +227,12 @@ const getContactsWithCustomFields = async (req, res) => {
                     id: contact.id,
                     contact_id: contact.contact_id,
                     location_id: contact.location_id,
-                    address: contact.address || null,
                     name: contact.name || "No Name",
                     location: contact.location || null,
                     vendor: contact.vendor || null,
                     tags: Array.isArray(contact.tags) ? contact.tags : (typeof contact.tags === "string" ? contact.tags.split(",") : []),
-                    age: contact.age || null
+                    age: contact.age || null,
+                    address: contact.address || null,
                 },
                 cardCoverImage,
                 standardCustomFields: standardFields,
@@ -256,6 +272,7 @@ const getContactsWithCustomFields = async (req, res) => {
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 };
+
 // const getContactsWithCustomFields = async (req, res) => {
 //     try {
 //         const {
@@ -542,3 +559,28 @@ const getSingleContact = async (req, res) => {
 module.exports = {
     getContactsWithCustomFields, getSingleContact
 };
+// if (projectDateField) {
+//     const projectDateFieldId = projectDateField._id;
+//     let dateFilterCondition = { custom_field_id: projectDateFieldId };
+
+//     if (parsedStartDate && parsedEndDate) {
+//         // If both dates exist, filter within range
+//         dateFilterCondition.value = { $gte: parsedStartDate, $lte: parsedEndDate };
+//     } else if (parsedStartDate) {
+//         // If only startDate exists, filter for exact match
+//         dateFilterCondition.value = parsedStartDate;
+//     }
+
+//     // Fetch contacts based on the Project Date filter
+//     const dateFilteredContacts = await ContactCustomFields.find(dateFilterCondition);
+//     console.log("Matching Contacts for Project Date:", dateFilteredContacts);
+
+//     // Store matching contact IDs
+//     const dateMatchedContactIds = dateFilteredContacts.map(entry => entry.contact_id);
+
+//     if (dateMatchedContactIds.length > 0) {
+//         orConditions.push({ _id: { $in: dateMatchedContactIds.map(id => new ObjectId(id)) } });
+//     }
+// } else {
+//     console.error("No 'Project date' custom field found.");
+// }
