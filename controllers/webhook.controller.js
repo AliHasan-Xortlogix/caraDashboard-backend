@@ -69,14 +69,14 @@ exports.syncContact = async (req, res) => {
                     { upsert: true }
                 );
             } else {
-                if (fieldData.cf_key === 'contact.project_date') {
-                    console.log('Project Date:', extractedUrls);
-                    await Contact.findOneAndUpdate(
-                        { contact_id: event.id },
-                        { $set: { Project_date: new Date(extractedUrls) } },
-                        { new: true }
-                    );
-                }
+                // if (fieldData.cf_key === 'contact.project_date') {
+                //     console.log('Project Date:', extractedUrls);
+                //     await Contact.findOneAndUpdate(
+                //         { contact_id: event.id },
+                //         { $set: { Project_date: new Date(extractedUrls) } },
+                //         { new: true }
+                //     );
+                // }
                 
                     const newCustomField = new ContactCustomField({
                     user_id: user._id,
