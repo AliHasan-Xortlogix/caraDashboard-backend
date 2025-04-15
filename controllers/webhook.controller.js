@@ -196,6 +196,7 @@ exports.syncContact = async (req, res) => {
             if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
                 return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
             }
+            console.log(event.type)
             const newContact = createContactData(event);
             contact = await newContact.save();
         }
