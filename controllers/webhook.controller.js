@@ -44,17 +44,27 @@ exports.syncContact = async (req, res) => {
 
     const getCustomFieldsFromGHL = async (locationId, accessToken, customfieldId) => {
         try {
-            const response = await axios.get(`https://services.leadconnectorhq.com/locations/${locationId}/customFields/${customfieldId}`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Version': '2021-07-28',
-                },
-            });
-            return response.data.customField;
+            const response = await axios.get(
+                `https://services.leadconnectorhq.com/locations/${locationId}/customFields/${customfieldId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Version': '2021-07-28',
+                    },
+                }
+            );
+        
+            if (response.status === 200 && response.data?.customField) {
+                return response.data.customField;
+            } else {
+                console.log("No Data Success Found");
+                return { message: 'No data found' };
+            }
         } catch (error) {
-            console.error('Error fetching custom fields from GHL:', error);
-            throw new Error('Failed to fetch custom fields');
+            console.error('Error fetching custom fields from GHL:', error.response?.data || error.message);
+            return { message: 'No data found' };
         }
+
     };
 
     const storeCustomFields = async (customFields, locationId, userId) => {
@@ -132,18 +142,20 @@ exports.syncContact = async (req, res) => {
                 const accessToken = ghlauthRecord.access_token;
 
                 const customField = await getCustomFieldsFromGHL(locationId, accessToken, field.id);
-                await storeCustomFields(customField, locationId, user._id);
-
-                fieldData = await customFieldModels.findOne({ cf_id: field.id });
-
-                if (fieldData) {
-                    const newCustomField = new ContactCustomField({
-                        user_id: user._id,
-                        contact_id: contact._id,
-                        custom_field_id: fieldData._id,
-                        value,
-                    });
-                    await newCustomField.save();
+                if(customField.id){
+                    await storeCustomFields(customField, locationId, user._id);
+    
+                    fieldData = await customFieldModels.findOne({ cf_id: field.id });
+    
+                    if (fieldData) {
+                        const newCustomField = new ContactCustomField({
+                            user_id: user._id,
+                            contact_id: contact._id,
+                            custom_field_id: fieldData._id,
+                            value,
+                        });
+                        await newCustomField.save();
+                    }
                 }
             }
         }
