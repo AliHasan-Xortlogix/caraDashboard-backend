@@ -1,8 +1,25 @@
 const Settings = require('../models/Setting.models');
 const User = require('../models/user.models');
 exports.getUserSettings = async (req, res) => {
-    const user_id = req.user._id;
     try {
+        let user_id = req?.user?._id;
+
+        // Check if user ID is not available, fallback to locationId
+        if (!user_id) {
+            const locationId = req.locationId;
+
+            if (!locationId) {
+                return res.status(400).json({ message: "No user found: missing user ID and location ID" });
+            }
+
+            // Try to find the user using locationId
+            const user = await User.findOne({ location_id: locationId });
+            if (!user) {
+                return res.status(404).json({ message: `No user found for location ID: ${locationId}` });
+            }
+
+            user_id = user._id;
+        }
 
         const settings = await Settings.find({ user_id })
             .populate('user_id', 'first_name last_name email role');
@@ -13,7 +30,7 @@ exports.getUserSettings = async (req, res) => {
 
         return res.status(200).json(settings);
     } catch (error) {
-        console.error(error);
+        console.error("Error retrieving settings:", error);
         return res.status(500).json({ message: 'An error occurred while retrieving the settings' });
     }
 };
