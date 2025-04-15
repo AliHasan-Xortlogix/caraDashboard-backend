@@ -9,6 +9,7 @@ const axios = require('axios');
 
 exports.syncContact = async (req, res) => {
     const event = req.body;
+
     const createContactData = (event) => {
         return new Contact({
             location_id: event.locationId || null,
@@ -41,19 +42,71 @@ exports.syncContact = async (req, res) => {
         });
     };
 
+    const getCustomFieldsFromGHL = async (locationId, accessToken, customfieldId) => {
+        try {
+            const response = await axios.get(`https://services.leadconnectorhq.com/locations/${locationId}/customFields/${customfieldId}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Version': '2021-07-28',
+                },
+            });
+            return response.data.customField;
+        } catch (error) {
+            console.error('Error fetching custom fields from GHL:', error);
+            throw new Error('Failed to fetch custom fields');
+        }
+    };
+
+    const storeCustomFields = async (customFields, locationId, userId) => {
+        try {
+            const field = customFields;
+            if (field.id) {
+                const existingField = await customFieldModels.findOne({
+                    user_id: userId,
+                    cf_id: field.id,
+                    location_id: locationId
+                });
+
+                if (existingField) {
+                    existingField.cf_name = field.name;
+                    existingField.cf_key = field.fieldKey;
+                    existingField.dataType = field.dataType;
+                    await existingField.save();
+                    console.log(`Custom field with id ${field.id} updated`);
+                } else {
+                    const newCustomField = new customFieldModels({
+                        cf_id: field.id,
+                        cf_name: field.name,
+                        cf_key: field.fieldKey,
+                        dataType: field.dataType,
+                        location_id: locationId,
+                        user_id: userId,
+                    });
+                    await newCustomField.save();
+                    console.log(`Custom field with id ${field.id} created`);
+                }
+            }
+            console.log('Custom fields successfully processed');
+        } catch (error) {
+            console.error('Error saving custom fields:', error);
+            throw new Error('Failed to save custom fields');
+        }
+    };
+
     const handleCustomFields = async (event, contact, user) => {
         if (!event.customFields?.length) return;
 
         for (const field of event.customFields) {
             if (!field.id) continue;
-            const fieldData = await customFieldModels.findOne({ cf_id: field.id });
+
+            let fieldData = await customFieldModels.findOne({ cf_id: field.id });
             let value = typeof field.value === 'object' && field.value !== null
                 ? Object.values(field.value)
-                    .filter(v => v?.url && !v.meta?.deleted) // Skip if deleted
+                    .filter(v => v?.url && !v.meta?.deleted)
                     .map(v => v.url)
                 : field.value;
+
             console.log('Processed URL(s) from object value:', JSON.stringify(value, null, 2));
-            // if (Array.isArray(value) && value.length === 1) value = value[0];
 
             if (fieldData) {
                 if (fieldData.cf_key === 'contact.project_date') {
@@ -69,37 +122,29 @@ exports.syncContact = async (req, res) => {
                     { upsert: true }
                 );
             } else {
-                // if (fieldData.cf_key === 'contact.project_date') {
-                //     console.log('Project Date:', extractedUrls);
-                //     await Contact.findOneAndUpdate(
-                //         { contact_id: event.id },
-                //         { $set: { Project_date: new Date(extractedUrls) } },
-                //         { new: true }
-                //     );
-                // }
-                const user = await User.findById(event.location_id);
-                const locationId = user.location_id;
-                console.log(user, locationId)
-                // Fetch the accessToken based on the locationId from Ghlauth model
+                const userRecord = await User.findById(user._id);
+                const locationId = userRecord.location_id;
+
                 const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
                 if (!ghlauthRecord || !ghlauthRecord.access_token) {
                     return res.status(400).json({ error: 'Access token not found for this location' });
                 }
                 const accessToken = ghlauthRecord.access_token;
-        
-                // Fetch custom fields from GoHighLevel API
-                const customFields = await getCustomFieldsFromGHL(locationId, accessToken,field.id);
-                console.log(customFields)
-                // Store custom fields in the database
-                await storeCustomFields(customFields, locationId, userId);
 
+                const customField = await getCustomFieldsFromGHL(locationId, accessToken, field.id);
+                await storeCustomFields(customField, locationId, user._id);
+
+                fieldData = await customFieldModels.findOne({ cf_id: field.id });
+
+                if (fieldData) {
                     const newCustomField = new ContactCustomField({
-                    user_id: user._id,
-                    contact_id: contact._id,
-                    custom_field_id: field.id,
-                    value,
-                });
-                await newCustomField.save();
+                        user_id: user._id,
+                        contact_id: contact._id,
+                        custom_field_id: fieldData._id,
+                        value,
+                    });
+                    await newCustomField.save();
+                }
             }
         }
     };
@@ -137,34 +182,25 @@ exports.syncContact = async (req, res) => {
 
         if (event.type === 'ContactCreate') {
             if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
-                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
+                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
             }
             const newContact = createContactData(event);
             contact = await newContact.save();
         }
 
-        if (event.type === 'ContactUpdate' ||event.type === 'ContactTagUpdate' ) {
+        if (['ContactUpdate', 'ContactTagUpdate'].includes(event.type)) {
             if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
-                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
+                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
             }
-            console.log('Ye tags hain ',event.tags);
+
             contact = await Contact.findOne({ contact_id: event.id });
             if (!contact) {
                 return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
             }
+
             const updated = createContactData(event);
             const { _id, ...updates } = updated.toObject();
             await Contact.findByIdAndUpdate(contact._id, updates);
-        }
-
-        if (event.type === 'ContactTagUpdate') {
-            if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
-                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` }); // Exit early if tag is not present
-            }
-            contact = await Contact.findOne({ contact_id: event.id });
-            if (!contact) {
-                return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
-            }
         }
 
         if (contact) {
