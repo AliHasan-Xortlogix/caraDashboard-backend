@@ -235,3 +235,4 @@ exports.syncContact = async (req, res) => {
     }
 
 };
+exports.createAppointment = async (req, res) => {};
