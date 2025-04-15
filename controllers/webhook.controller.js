@@ -183,47 +183,55 @@ exports.syncContact = async (req, res) => {
 
         await contact.save();
     };
-
     try {
         const user = await User.findOne({ location_id: event.locationId });
         if (!user) {
             return res.status(400).json({ error: `User not found for location_id: ${event.locationId}` });
         }
-
+    
         let contact;
-
+        let newContact;
+    
         if (event.type === 'ContactCreate') {
-            if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
-                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
+            if (event.locationId === user.location_id) {
+                if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
+                    return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
+                }
+                console.log(event.type);
+                newContact = createContactData(event);
+                contact = await newContact.save();
             }
-            console.log(event.type)
-            const newContact = createContactData(event);
-            contact = await newContact.save();
         }
-
+    
         if (['ContactUpdate', 'ContactTagUpdate'].includes(event.type)) {
-            if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
-                return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
+            if (event.locationId === user.location_id) {
+                if (!Array.isArray(event.tags) || !event.tags.includes("show in gallery")) {
+                    return res.status(400).json({ error: `Desired Tag Not Found : ${event.id}` });
+                }
+    
+                contact = await Contact.findOne({ contact_id: event.id });
+    
+                if (!contact) {
+                    newContact = createContactData(event);
+                    contact = await newContact.save();
+                }
+    
+                const updated = createContactData(event);
+                const { _id, ...updates } = updated.toObject();
+                await Contact.findByIdAndUpdate(contact._id, updates);
             }
-
-            contact = await Contact.findOne({ contact_id: event.id });
-            if (!contact) {
-                return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
-            }
-
-            const updated = createContactData(event);
-            const { _id, ...updates } = updated.toObject();
-            await Contact.findByIdAndUpdate(contact._id, updates);
         }
-
-        if (contact) {
+    
+        if (contact && event.locationId === user.location_id) {
             await handleCustomFields(event, contact, user);
             await handleTags(event, contact, user);
         }
-
+    
         res.status(200).json({ success: true });
+    
     } catch (error) {
         console.error('Error syncing contact:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
+
 };
