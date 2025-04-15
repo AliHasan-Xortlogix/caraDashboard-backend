@@ -77,7 +77,22 @@ exports.syncContact = async (req, res) => {
                 //         { new: true }
                 //     );
                 // }
-                
+                const user = await User.findById(event.location_id);
+                const locationId = user.location_id;
+                console.log(user, locationId)
+                // Fetch the accessToken based on the locationId from Ghlauth model
+                const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
+                if (!ghlauthRecord || !ghlauthRecord.access_token) {
+                    return res.status(400).json({ error: 'Access token not found for this location' });
+                }
+                const accessToken = ghlauthRecord.access_token;
+        
+                // Fetch custom fields from GoHighLevel API
+                const customFields = await getCustomFieldsFromGHL(locationId, accessToken,field.id);
+                console.log(customFields)
+                // Store custom fields in the database
+                await storeCustomFields(customFields, locationId, userId);
+
                     const newCustomField = new ContactCustomField({
                     user_id: user._id,
                     contact_id: contact._id,
