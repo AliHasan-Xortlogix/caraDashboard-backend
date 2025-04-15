@@ -96,7 +96,7 @@ const getContactsWithCustomFields = async (req, res) => {
 
             query.$and = query.$and || []; // Ensure $and exists
             query.$and.push({ Project_date: dateFilter });
-           
+
         }
 
         // If there are matching contact IDs, apply the filter
@@ -205,15 +205,35 @@ const getContactsWithCustomFields = async (req, res) => {
             let relatedImages = [];
             let customCustomFields = [];
 
+            // Object.entries(fieldMap).forEach(([fieldName, cfId]) => {
+            //     if (fieldName === "Cover Image") {
+            //         cardCoverImage = fieldValues[cfId] || null;
+            //     } else if (fieldName === "related images") {
+            //         relatedImages = fieldValues[cfId] || [];
+            //     } else {
+            //         standardFields[fieldName] = fieldValues[cfId] || null;
+            //     }
+            // });
             Object.entries(fieldMap).forEach(([fieldName, cfId]) => {
+                const value = fieldValues[cfId] || null;
+
                 if (fieldName === "Cover Image") {
-                    cardCoverImage = fieldValues[cfId] || null;
+                    cardCoverImage = value;
                 } else if (fieldName === "related images") {
-                    relatedImages = fieldValues[cfId] || [];
-                } else {
-                    standardFields[fieldName] = fieldValues[cfId] || null;
+                    relatedImages = value || [];
+                } else if (fieldName === "Confirmed Project Date") {
+                    // Override projectDate if Confirmed Project Date exists
+                    standardFields.projectDate = value;
+                } else if (fieldName === "Project Date" && !standardFields.projectDate) {
+                    // Only set this if Confirmed Project Date wasn't set earlier
+                    standardFields.projectDate = value;
+                } else if (fieldName === "Start Time") {
+                    standardFields.startTime = value;
+                } else if (fieldName === "Finish Time") {
+                    standardFields.finishTime = value;
                 }
             });
+
             // console.log(settingmapcfIds);
             customCustomFields = settingmapcfIds.map(({ cf_id, cf_name }) => ({
 
@@ -272,7 +292,6 @@ const getContactsWithCustomFields = async (req, res) => {
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 };
-
 // const getContactsWithCustomFields = async (req, res) => {
 //     try {
 //         const {
