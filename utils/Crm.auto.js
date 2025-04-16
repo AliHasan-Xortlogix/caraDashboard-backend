@@ -27,7 +27,7 @@ class CRM {
     }
 
     // Helper method to handle API calls with error handling
-    static async makeCall(url, method = "GET", data = null, headers = {}, json = true) {
+     async makeCall(url, method = "GET", data = null, headers = {}, json = true) {
         try {
 
             const requestOptions = {
@@ -48,13 +48,14 @@ class CRM {
             return response.data;
         } catch (error) {
             logger.error(`API Call Error: ${error.response ? JSON.stringify(error.response.data) : error.message}`);
-            throw new Error("API call failed");
+            return error.response ? error.response.data : error.message;
         }
     }
 
 
     // Helper method to fetch or save CRM token
     async getCrmToken(where = {}) {
+        console.log('where of getCrmToken', where);
         try {
             return await this.crmModel.findOne(where);
         } catch (error) {
@@ -115,7 +116,7 @@ class CRM {
 
     // Direct connect method to redirect to OAuth flow
     static directConnect() {
-        return `https://marketplace.gohighlevel.com/oauth/chooselocation?${CRM.baseConnect()}`;
+        return `https://marketplace.gohighlevel.com/oauth/chooselocation?${this.baseConnect()}`;
     }
 
     // Method to initiate OAuth connection
@@ -126,7 +127,7 @@ class CRM {
             const type = isCompany ? this.langCom : this.langLoc;
             let authType = this.userType[type];
 
-            const authUrl = await CRM.baseConnect(this.scopes);
+            const authUrl = await this.baseConnect(this.scopes);
 
             const locUrl = `${this.baseUrl}oauth/authorize?${authType}=${mainId}&userType=${type}&${authUrl}`;
 
@@ -134,7 +135,7 @@ class CRM {
                 Authorization: `Bearer ${token}`,
             };
 
-            const response = await CRM.makeCall(locUrl, "POST", null, headers);
+            const response = await this.makeCall(locUrl, "POST", null, headers);
 
             if (response && response.redirectUrl) {
                 const urlParams = new URL(response.redirectUrl);
@@ -171,14 +172,14 @@ class CRM {
             console.log('data of crmToken', data);
 
             // Making the API call with x-www-form-urlencoded content type
-            const response = await CRM.makeCall(`${this.baseUrl}oauth/token`, "POST", data, {
+            const response = await this.makeCall(`${this.baseUrl}oauth/token`, "POST", data, {
                 "Content-Type": "application/x-www-form-urlencoded",
             }, false);
 
             return response;
         } catch (error) {
             logger.error(`CRM Token Error: ${error.response ? error.response.data : error.message}`);
-            throw new Error("CRM token request failed");
+            return error.response ? error.response.data : error.message;
         }
     }
     // Exchange code for a token
@@ -192,7 +193,7 @@ class CRM {
                 const savedToken = await this.saveCrmToken(token, companyId);
                 return [true, savedToken];  // Ensure the saved token is returned
             }
-
+            
             return [false, "Token retrieval failed"];
         } catch (error) {
             logger.error("Error during token exchange:", error);
@@ -202,22 +203,22 @@ class CRM {
 
 
     // Get location access token
-    static async getLocationAccessToken(userId, locationId, token = null) {
+     async getLocationAccessToken(userId, locationId, token = null) {
         try {
-            if (!token) token = await CRM.getCrmToken({ user_id: userId, user_type: "company" });
+            if (!token) token = await this.getCrmToken({ user_id: userId, user_type: "company" });
 
-            const response = await CRM.makeCall(`${CRM.baseUrl}oauth/locationToken`, "POST", {
+            const response = await this.makeCall(`${this.baseUrl}oauth/locationToken`, "POST", {
                 companyId: token.company_id,
                 locationId: locationId,
             }, {
                 Accept: "application/json",
                 Authorization: `Bearer ${token.access_token}`,
                 "Content-Type": "application/x-www-form-urlencoded",
-                Version: CRM.version,
+                Version: this.version,
             });
 
             if (response && response.access_token) {
-                return await CRM.saveCrmToken(response, userId);
+                return await this.saveCrmToken(response, userId);
             } else {
                 logger.error("Failed to get location access token");
                 return null;
@@ -229,56 +230,59 @@ class CRM {
     }
 
     // Check if token is expired
-    static isExpired(response) {
-        return response && response.error && response.error.includes("expired");
+     isExpired(response) {
+        return response &&  response.statusCode && response.statusCode === 401 && (response.message.includes("Invalid") || response.message.includes("expired"));
     }
 
     // Modify URL for specific location context
-    static modifyUrl(url, location_id, location) {
-        if (!url.includes("locations/")) {
-            url = `locations/${location_id || location.location_id}/${url}`;
+     modifyUrl(url, location_id, location,method) {
+        if (!url.includes("locations/") && (method === "get" || method === "GET")) {
+            url + `?locationId=${location_id || location.location_id}`;
         }
         return url;
     }
 
     // Main CRM API call with token management
-    static async crmV2(company_id, urlmain = "", method = "get", data = "", headers = {}, json = true, location_id = "") {
+    async crmV2(company_id, urlmain = "", method = "get", data = "", headers = {}, json = true, location_id = "") {
+        console.log(company_id);
         if (!company_id) return "No Data";
 
-        let location = await CRM.getLocationToken(company_id, location_id);
+        let location = await this.getCrmToken({ user_id: company_id });
+        console.log(location);
         if (!location) return "No Data";
 
-        headers["Version"] = CRM.version;
+        headers["Version"] = this.version;
         let accessToken = location?.access_token;
 
         if (!accessToken) return "No Token";
-
-        // Check if token is expired and refresh if needed
-        if (CRM.isExpired(location)) {
-            location = await CRM.handleTokenRefresh(company_id, urlmain, method, data, headers, json, location);
-            if (!location) return "Token Expired";
+        let  finalUrl = this.baseUrl + urlmain;
+        finalUrl= this.modifyUrl(finalUrl, location_id, location,method);
+        console.log(finalUrl);
+        headers["Authorization"] = `Bearer ${accessToken}`;
+       let ghlresponse= await this.makeCall(finalUrl, method, data, headers, json);
+       console.log(ghlresponse);
+        if (this.isExpired(ghlresponse)) {
+        location = await this.handleTokenRefresh(company_id, urlmain, method, data, headers, json, location);
+        if (location === "Token Expired") return {responseStatus:false, message:"Token Expired or RefreshToken is invalid"};
             accessToken = location?.access_token; // Update access token after refresh
         }
-
-        const finalUrl = CRM.baseUrl + CRM.modifyUrl(urlmain, location_id, location);
-        headers["Authorization"] = `Bearer ${accessToken}`;
-
-        return await CRM.makeCall(finalUrl, method, data, headers, json);
+        return ghlresponse;
     }
 
     // Handle token refresh logic when expired
-    static async handleTokenRefresh(company_id, urlmain, method, data, headers, json, location) {
-        const newLocation = await CRM.getRefreshToken(company_id, location);
+     async handleTokenRefresh(company_id, urlmain, method, data, headers, json, location) {
+        const newLocation = await this.getRefreshToken(company_id, location);
         if (newLocation) {
-            return CRM.crmV2(company_id, urlmain, method, data, headers, json, newLocation.location_id);
+            return  await this.crmV2(company_id, urlmain, method, data, headers, json, newLocation.location_id);
         }
         return "Token Expired";
     }
 
     // Get refreshed token using refresh token
-    static async getRefreshToken(company_id, location) {
+     async getRefreshToken(company_id, location) {
         const refreshToken = location.refresh_token;
-        const response = await CRM.goAndGetToken(refreshToken, "refresh", company_id);
+        const response = await this.goAndGetToken(refreshToken, "refresh_token", company_id);
+        console.log(response[0]);
         return response[0] ? response[1] : null;
     }
 }
