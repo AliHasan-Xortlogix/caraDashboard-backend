@@ -185,7 +185,7 @@ const getContactsWithCustomFields = async (req, res) => {
             let cardCoverImage = null;
             let relatedImages = [];
             let customCustomFields = [];
-
+console.log('Ye Feild Map haa',fieldMap);
             Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
                 const value = fieldValues[cfId] || null;
 
