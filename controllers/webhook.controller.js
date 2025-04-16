@@ -270,10 +270,25 @@ exports.createAppointment = async (req, res) => {
         }
     };
 
-    console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
+    console.log('Incoming payload:', JSON.stringify(req.body, null, 2));
 
-    // ✅ Destructure main body and extras
     const {
+        data = {},
+        extras = {},
+        meta = {}
+    } = req.body;
+
+    // Destructure fields from each section
+    const {
+        name,
+        age,
+        gender,
+        hobbies,
+        address,
+        country,
+        profileType,
+        dataShare,
+        tems,
         start_date,
         start_time,
         end_date,
@@ -281,22 +296,23 @@ exports.createAppointment = async (req, res) => {
         time_zone,
         calendar_id,
         user_id,
-        rejection_tag,
-        extras = {} // fallback in case extras not sent
-    } = req.body;
+        rejection_tag
+    } = data;
 
     const {
         locationId,
-        contactId
+        contactId,
+        workflowId
     } = extras;
 
     try {
-        // ✅ Parse datetime
+        // ✅ Handle datetime formatting
         const parsedStart = moment.tz(`${start_date} ${start_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
         const parsedEnd = moment.tz(`${end_date} ${end_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
 
+        // ✅ Construct payload for appointment creation
         const payload = {
-            title: "Test Event",
+            title: `${name}'s Appointment`, // or custom title
             ignoreDateRange: false,
             ignoreFreeSlotValidation: true,
             assignedUserId: user_id,
@@ -305,11 +321,24 @@ exports.createAppointment = async (req, res) => {
             contactId: contactId,
             startTime: parsedStart,
             endTime: parsedEnd,
+            metadata: {
+                name,
+                age,
+                gender,
+                hobbies,
+                address,
+                country,
+                profileType,
+                dataShare,
+                tems,
+                workflowId,
+                source: meta?.key || 'custom_action'
+            }
         };
 
-        console.log(payload);
+        console.log("Prepared Payload:", payload);
 
-        // ✅ Fetch access token from DB
+        // ✅ Fetch access token
         const user = await User.findOne({ location_id: locationId });
         if (!user) {
             return res.status(400).json({ error: `User not found for location_id: ${locationId}` });
@@ -322,7 +351,7 @@ exports.createAppointment = async (req, res) => {
 
         const accessToken = ghlauthRecord.access_token;
 
-        // ✅ Make appointment API call
+        // ✅ Call appointment API
         const appointmentResult = await makeAppointmentCall(payload, accessToken);
 
         if (appointmentResult.rejectionTag) {
