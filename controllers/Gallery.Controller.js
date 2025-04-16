@@ -112,13 +112,13 @@ const getContactsWithCustomFields = async (req, res) => {
             "contact.cover_image",
             "contact.project_date",
             "contact.start_time",
-            "contact.finish_time",
+            "contact.end_time",
             "contact.related_images"
         ];
 
         const customFields = allCustomFields.filter(field => fieldNames.includes(field.cf_key));
         const fieldMap = customFields.reduce((acc, field) => {
-            acc[field.cf_name] = field.id;
+            acc[field.cf_key] = field.id;
             return acc;
         }, {});
         console.log(user_id)
@@ -180,27 +180,27 @@ const getContactsWithCustomFields = async (req, res) => {
             let standardFields = {
                 projectDate: null,
                 startTime: null,
-                finishTime: null
+                endTime: null
             };
             let cardCoverImage = null;
             let relatedImages = [];
             let customCustomFields = [];
 
-            Object.entries(fieldMap).forEach(([fieldName, cfId]) => {
+            Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
                 const value = fieldValues[cfId] || null;
 
-                if (fieldName === "Cover Image") {
+                if (fieldKey === "contact.cover.image") {
                     cardCoverImage = value;
-                } else if (fieldName === "related images") {
+                } else if (fieldKey === "contact.related.images") {
                     relatedImages = value || [];
-                } else if (fieldName === "Confirmed Project Date") {
+                } else if (fieldKey === "contact.project.date") {
                     standardFields.projectDate = value;
-                } else if (fieldName === "Project Date" && !standardFields.projectDate) {
+                } else if (fieldKey === "contact.project.date" && !standardFields.projectDate) {
                     standardFields.projectDate = value;
-                } else if (fieldName === "Start Time") {
+                } else if (fieldKey === "contact.start.time") {
                     standardFields.startTime = value;
-                } else if (fieldName === "Finish Time") {
-                    standardFields.finishTime = value;
+                } else if (fieldKey === "contact.end.time") {
+                    standardFields.endTime = value;
                 }
             });
 
