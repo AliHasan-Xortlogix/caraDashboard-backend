@@ -457,43 +457,53 @@ const getContactsWithCustomFields = async (req, res) => {
 const getSingleContact = async (req, res) => {
     try {
         const { contact_id, location_id } = req.query;
+
+        // Validate required params
         if (!contact_id) return res.status(400).json({ message: "contact_id is required" });
-        // const user_id = req.user.id;
-        // console.log(user_id)
-        // const user = await User.findById(user_id);
-        // if (!user) return res.status(404).json({ message: "User not found" });
-        // const locationId = user.location_id;
-        // Fetch the single contact
-        const contact = await Contacts.findOne({
-            contact_id: contact_id,
-            location_id: location_id
-        });
-        const user = await User.findOne({location_id: location_id});
-        if (!user) return res.status(404).json({ message: "User not found" });
-        const user_id = user._id;
-        console.log(contact)
+        if (!location_id) return res.status(400).json({ message: "location_id is required" });
+
+        // Find the contact
+        const contact = await Contacts.findOne({ contact_id, location_id });
         if (!contact) return res.status(404).json({ message: "Contact not found" });
-        const fieldNames = ["contact.cover_image", "contact.project_date", "contact.start_time", "contact.finish_time", "contact.related_images"];
-        const customFields = await CustomFields.find({ cf_name: { $in: fieldNames } });
+
+        // Find user by location_id
+        const user = await User.findOne({ location_id });
+        if (!user) return res.status(404).json({ message: "No user found for the provided location_id" });
+
+        const user_id = user._id;
+        const allCustomFields = await CustomFields.find({ location_id });
+
+
+        // Get standard field names
+        const fieldNames = [
+            "contact.cover_image",
+            "contact.project_date",
+            "contact.start_time",
+            "contact.end_time",
+            "contact.related_images"
+        ];
+
+        // Fetch custom fields from DB
+        const customFields = allCustomFields.filter(field => fieldNames.includes(field.cf_key));
         const fieldMap = customFields.reduce((acc, field) => {
             acc[field.cf_key] = field.id;
             return acc;
         }, {});
-        console.log(user_id)
-        let settings;
+        
+
+        // Get display settings
+        let settings = null;
         if (ObjectId.isValid(user_id)) {
-            const stringId = user_id.toString(); // convert to string
-            console.log(stringId)
-            settings = await Settings.findOne({
-                user_id: user_id, // using string in query (Mongoose may auto-cast)
-                key: "displaySetting"
-            });
-            console.log(settings)
+            settings = await Settings.findOne({ user_id, key: "displaySetting" });
         } else {
-            console.log("Invalid ObjectId format");
+            return res.status(400).json({ message: "Invalid user ID format" });
         }
+
         if (!settings) return res.status(404).json({ message: "Display settings not found" });
-        const displayFields = settings.value;
+
+        const displayFields = settings.value || [];
+
+        // Map display field cf_ids to actual _ids
         const settingmapcfIds = [];
         for (const field of displayFields) {
             const customField = await CustomFields.findOne({ cf_id: field.cf_id });
@@ -502,23 +512,30 @@ const getSingleContact = async (req, res) => {
                 cf_id: customField ? customField._id.toString() : field.cf_id
             });
         }
+
+        // Collect all relevant custom_field_ids
         const displayCfIds = displayFields.map(field => field.cf_id);
-        const customFieldsid = await CustomFields.find({
-            cf_id: { $in: displayCfIds }
-        });
-        const selectedcustomFieldIds = customFieldsid.map(field => field.id);
-        const customFieldcfIds = customFields.map(field => field.id);
-        const allCustomFieldIds = [...customFieldcfIds, ...selectedcustomFieldIds];
+        const customFieldsFromDisplay = await CustomFields.find({ cf_id: { $in: displayCfIds } });
+
+        const allCustomFieldIds = [
+            ...customFields.map(f => f._id.toString()),
+            ...customFieldsFromDisplay.map(f => f._id.toString())
+        ];
+
+        // Get custom field values for the contact
         const allCustomFieldValues = await ContactCustomFields.find({
-            contact_id: contact.id,
+            contact_id: contact._id.toString(),
             custom_field_id: { $in: allCustomFieldIds }
         });
+
         const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
             if (!acc[field.contact_id]) acc[field.contact_id] = {};
             acc[field.contact_id][field.custom_field_id] = field.value || null;
             return acc;
         }, {});
-        const fieldValues = contactFieldMap[contact.id] || {};
+
+        const fieldValues = contactFieldMap[contact._id.toString()] || {};
+        console.log("📦 fieldValues:", fieldValues);
 
         let standardFields = {
             projectDate: null,
@@ -528,6 +545,7 @@ const getSingleContact = async (req, res) => {
         let cardCoverImage = null;
         let relatedImages = [];
         let customCustomFields = [];
+
         Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
             const value = fieldValues[cfId] || null;
 
@@ -546,27 +564,39 @@ const getSingleContact = async (req, res) => {
             }
         });
 
+        // Display settings fields
         customCustomFields = settingmapcfIds.map(({ cf_id, cf_name }) => ({
             label: cf_name,
             value: fieldValues[cf_id] || null
         }));
+      
+        // Final formatted contact
         const formattedContact = {
             basicContactData: {
-                id: contact.contact_id,
+                id: contact._id.toString(),
+                contact_id: contact.contact_id,
+                location_id: contact.location_id,
                 name: contact.name || "No Name",
                 location: contact.location || null,
                 vendor: contact.vendor || null,
-                tags: Array.isArray(contact.tags) ? contact.tags : (typeof contact.tags === "string" ? contact.tags.split(",") : []),
-                age: contact.age || null
+                tags: Array.isArray(contact.tags)
+                    ? contact.tags
+                    : typeof contact.tags === "string"
+                        ? contact.tags.split(",")
+                        : [],
+                age: contact.age || null,
+                address: contact.address || null
             },
             cardCoverImage,
             standardCustomFields: standardFields,
             relatedImages,
             customCustomFields
         };
+
         return res.status(200).json({ contact: formattedContact });
+
     } catch (error) {
-        console.error("Error fetching single contact:", error.message);
+        console.error("❌ Error fetching single contact:", error);
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 };
