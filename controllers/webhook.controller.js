@@ -278,10 +278,10 @@ console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
     console.log(JSON.stringify(req.body));
         let {
             start_date,
-            start_time = "09:00AM", // fallback default
+            start_time, // fallback default
             end_date,
-            end_time = "10:00AM",   // fallback default
-            time_zone = "Australia/Sydney", // Convert "AEST" → "Australia/Sydney"
+            end_time ,   // fallback default
+            time_zone, // Convert "AEST" → "Australia/Sydney"
             calendar_id,
             user_id,
             rejection_tag
