@@ -6,7 +6,7 @@ const customFieldModels = require('../models/customFields.models');
 const User = require('../models/user.models');
 const Ghlauth = require('../models/Ghlauth.models');
 const axios = require('axios');
-
+const moment = require("moment-timezone");
 exports.syncContact = async (req, res) => {
     const event = req.body;
 
@@ -235,4 +235,103 @@ exports.syncContact = async (req, res) => {
     }
 
 };
-exports.createAppointment = async (req, res) => {};
+exports.createAppointment = async (req, res) => {
+        const makeAppointmentCall = async (payload, accessToken) => {
+            try {
+                const response = await axios.post(
+                    "https://services.leadconnectorhq.com/calendars/events/appointments",
+                    payload,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            Version: "2021-07-28",
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
+    
+                console.log("Appointment Response:", response.data);
+    
+                // Check for `id` in response
+                if (response.data && response.data.id) {
+                    return {
+                        appointmentCreation: true,
+                        rejectionTag: false,
+                    };
+                } else {
+                    return {
+                        appointmentCreation: false,
+                        rejectionTag: true,
+                    };
+                }
+    
+            } catch (error) {
+                console.error('Error creating appointment:', error.response?.data || error.message);
+                throw new Error('Failed to create appointment');
+            }
+        };
+
+    try {
+        const {
+            data,
+            extras
+        } = req.body;
+
+        const {
+            start_date,
+            start_time = "09:00AM", // fallback default
+            end_date,
+            end_time = "10:00AM",   // fallback default
+            time_zone = "Australia/Sydney", // Convert "AEST" → "Australia/Sydney"
+            calendar_id,
+            user_id,
+            rejection_tag
+        } = data;
+
+        const {
+            locationId,
+            contactId,
+        } = extras;
+
+        // 🧠 Parse date in format "April 1, 2025"
+        const parsedStart = moment.tz(`${start_date} ${start_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
+        const parsedEnd = moment.tz(`${end_date} ${end_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
+
+        // Prepare payload
+        const payload = {
+            title: "Test Event",
+            ignoreDateRange: false,
+            ignoreFreeSlotValidation: true,
+            assignedUserId: user_id,
+            calendarId: calendar_id,
+            locationId: locationId,
+            contactId: contactId,
+            startTime: parsedStart,
+            endTime: parsedEnd,
+        };
+        console.log(payload);
+        // Fetch token
+        const user = await User.findOne({ location_id: locationId });
+        if (!user) {
+            return res.status(400).json({ error: `User not found for location_id: ${locationId}` });
+        }
+
+        const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
+        if (!ghlauthRecord || !ghlauthRecord.access_token) {
+            return res.status(400).json({ error: 'Access token not found for this location' });
+        }
+
+        const accessToken = ghlauthRecord.access_token;
+
+        const appointmentResult = await makeAppointmentCall(payload, accessToken);
+
+        if(appointmentResult.rejectionTag) {
+            appointmentResult.rejectionTag = rejection_tag;
+        }
+        return res.status(200).json(appointmentResult);
+
+    } catch (error) {
+        console.error("Appointment creation failed:", error.response?.data || error.message);
+        res.status(500).json({ success: false, message: "Failed to create appointment" });
+    }
+};
