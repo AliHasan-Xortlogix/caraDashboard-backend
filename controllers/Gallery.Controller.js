@@ -200,7 +200,7 @@ const getContactsWithCustomFields = async (req, res) => {
                 } else if (fieldKey === "contact.start_time") {
                     standardFields.startTime = value;
                 } else if (fieldKey === "contact.end_time") {
-                    standardFields.endTime = value;
+                    standardFields.finishTime = value;
                 }
             });
 
