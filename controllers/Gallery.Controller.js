@@ -468,7 +468,7 @@ const getSingleContact = async (req, res) => {
             contact_id: contact_id,
             location_id: location_id
         });
-        const user = await User.findOne(location_id: location_id);
+        const user = await User.findOne({location_id: location_id});
         if (!user) return res.status(404).json({ message: "User not found" });
         const user_id = user._id;
         console.log(contact)
