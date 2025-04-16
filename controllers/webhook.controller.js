@@ -276,7 +276,7 @@ exports.createAppointment = async (req, res) => {
             data,
             extras
         } = req.body;
-console.log(req.body);
+console.log(JSON.stringify(req.body));
         const {
             start_date,
             start_time = "09:00AM", // fallback default
