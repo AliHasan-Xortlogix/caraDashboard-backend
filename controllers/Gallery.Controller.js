@@ -9,193 +9,174 @@ const ObjectId = mongoose.Types.ObjectId; // Get ObjectId
 
 const getContactsWithCustomFields = async (req, res) => {
     try {
-        const { page = 1, limit = 16, tags, startDate, endDate, sortName, sortDate } = req.query; // Default to page 1 and limit 10 if not provided
+        const {
+            page = 1,
+            limit = 16,
+            tags,
+            startDate,
+            endDate,
+            sortName,
+            sortDate
+        } = req.query;
 
         const user_id = req.user._id;
-
-
         const user = await User.findById(user_id);
         if (!user) return res.status(404).json({ message: "User not found" });
-        const locationId = user.location_id;
-        console.log(locationId);
 
+        const locationId = user.location_id;
         const skip = (page - 1) * limit;
         let query = { location_id: locationId };
 
+        /*** 🔍 Handle Tags & Name Search ***/
         let tagList = [];
         if (tags && typeof tags === "string") {
             tagList = tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0);
         }
 
-        console.log("Tag List:", tagList);
+        const escapeRegExp = (string) =>
+            string.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
         let orConditions = [];
 
-        function escapeRegExp(string) {
-            return string.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');  // Escapes special characters
-        }
-
+        // Fetch all custom fields for this location once
+        const allCustomFields = await CustomFields.find({ location_id: locationId });
+        console.log(allCustomFields)
         if (tagList.length > 0) {
             const tagRegexArray = tagList.map(tag => ({
-                tags: { $regex: escapeRegExp(tag.trim()), $options: "i" }
+                tags: { $regex: escapeRegExp(tag), $options: "i" }
             }));
-
-            orConditions.push(...tagRegexArray);
 
             const nameRegexArray = tagList.map(tag => ({
-                name: { $regex: escapeRegExp(tag.trim()), $options: "i" }
+                name: { $regex: escapeRegExp(tag), $options: "i" }
             }));
 
-            orConditions.push(...nameRegexArray);
+            orConditions.push(...tagRegexArray, ...nameRegexArray);
 
-            console.log("Updated OR Conditions:", JSON.stringify(orConditions, null, 2));
+            const matchingCustomFields = allCustomFields.filter(field =>
+                tagList.includes(field.cf_name)
+            );
+            const customFieldIds = matchingCustomFields.map(field => field._id);
+
+            if (customFieldIds.length > 0) {
+                const customFieldEntries = await ContactCustomFields.find({
+                    custom_field_id: { $in: customFieldIds }
+                });
+
+                const customFieldContacts = customFieldEntries.map(entry => entry.contact_id);
+                if (customFieldContacts.length > 0) {
+                    orConditions.push({
+                        _id: { $in: customFieldContacts.map(id => new ObjectId(id)) }
+                    });
+                }
+            }
         }
 
-
-
-        const matchingCustomFields = await CustomFields.find({ cf_name: { $in: tagList } });
-        const customFieldIds = matchingCustomFields.map(field => field._id);
-        console.log('Matching CustomFields:', matchingCustomFields);
-
-        let customFieldContacts = [];
-        if (customFieldIds.length > 0) {
-            const customFieldEntries = await ContactCustomFields.find({ custom_field_id: { $in: customFieldIds } });
-            customFieldContacts = customFieldEntries.map(entry => entry.contact_id);
-        }
-        console.log('Matching Contact IDs for Custom Fields:', customFieldContacts);
-
-        if (customFieldContacts.length > 0) {
-            orConditions.push({ _id: { $in: customFieldContacts.map(id => new ObjectId(id)) } });
-        }
-
+        /*** 🗓️ Handle Date Filters (Project_date) ***/
         const formatDate = (dateString) => {
             const date = new Date(dateString);
-            return date.toISOString().split("T")[0]; // Extract YYYY-MM-DD
+            return date.toISOString().split("T")[0];
         };
 
-        let dateMatchedContactIds = [];
-        console.log(startDate, endDate);
         if (startDate || endDate) {
-            let parsedStartDate = startDate ? formatDate(startDate) : null;
-            let parsedEndDate = endDate ? formatDate(endDate) : null;
-
-            console.log("Formatted Start Date:", parsedStartDate);
-            console.log("Formatted End Date:", parsedEndDate);
-
-            // Ensure the custom field "Project Date" exists
-            // const projectDateField = await CustomFields.findOne({ cf_name: "Project date" });
             let dateFilter = {};
+            if (startDate) dateFilter.$gte = formatDate(startDate);
+            if (endDate) dateFilter.$lte = formatDate(endDate);
 
-            if (parsedStartDate) {
-                dateFilter.$gte = parsedStartDate;
-            }
-            if (parsedEndDate) {
-                // parsedEndDate.setDate(parsedEndDate.getDate() + 1); // Include the full day
-                dateFilter.$lte = parsedEndDate;
-            }
-
-            query.$and = query.$and || []; // Ensure $and exists
+            query.$and = query.$and || [];
             query.$and.push({ Project_date: dateFilter });
-
         }
-
-        // If there are matching contact IDs, apply the filter
-        // if (dateMatchedContactIds.length > 0) {
-        //     orConditions.push({ _id: { $in: dateMatchedContactIds.map(id => new ObjectId(id)) } });
-        // }
-
-        /*** ✅ Filter by Name ***/
-
 
         if (orConditions.length > 0) {
             query.$or = orConditions;
         }
-        /*** ✅ Sorting ***/
-        let sortDirection = 1; // Default: ascending
-        if (sortName && sortName.toLowerCase() === "desc") {
-            sortDirection = -1;
-        }
-        let sortDateDirection = 1; // Default: ascending
-        if (sortDate && sortDate.toLowerCase() === "desc") {
-            sortDateDirection = -1;
-        }
-        console.log("Sort Direction:", sortDateDirection);
-        console.log("Final Query:", JSON.stringify(query, null, 2));
 
-        const totalContactsQuery = await Contacts.countDocuments(query); // Get the total contacts count based on the query
-        let contacts;
+        /*** 🔽 Sorting ***/
+        const sortOptions = {
+            Project_date: sortDate?.toLowerCase() === "desc" ? -1 : 1,
+            name: sortName?.toLowerCase() === "desc" ? -1 : 1,
+        };
 
-        if (limit == 0) {
-            // Show all contacts without pagination
-            contacts = await Contacts.find(query)
-                .sort({
-                    Project_date: sortDateDirection,
-                    name: sortDirection,
-                })
-                .limit(totalContactsQuery); // Fetch all contacts
-        } else {
-            // Paginated contacts
-            contacts = await Contacts.find(query)
-                .sort({
-                    Project_date: sortDateDirection,
-                    name: sortDirection,
-                })
-                .skip(skip)
-                .limit(Number(limit));
+        /*** 📦 Fetch Contacts ***/
+        const totalContactsQuery = await Contacts.countDocuments(query);
+        const contacts = await Contacts.find(query)
+            .sort(sortOptions)
+            .skip(limit == 0 ? 0 : skip)
+            .limit(limit == 0 ? totalContactsQuery : Number(limit));
+
+        if (!contacts.length) {
+            return res.status(404).json({ message: "No contacts found" });
         }
 
+        /*** 📋 Get Display Field Settings ***/
+        const fieldNames = [
+            "contact.cover_image",
+            "contact.project_date",
+            "contact.start_time",
+            "contact.finish_time",
+            "contact.related_images"
+        ];
 
-        //console.log("Contacts:", contacts);
-        if (!contacts.length) return res.status(404).json({ message: "No contacts found" });
-
-        const fieldNames = ["contact.cover_image", "contact.project_date", "contact.start_time", "contact.finish_time", "contact.related_images"];
-
-        const customFields = await CustomFields.find({ cf_key: { $in: fieldNames } });
-
+        const customFields = allCustomFields.filter(field => fieldNames.includes(field.cf_key));
         const fieldMap = customFields.reduce((acc, field) => {
             acc[field.cf_name] = field.id;
             return acc;
         }, {});
+        console.log(user_id)
+        let settings;
+        if (ObjectId.isValid(user_id)) {
+            const stringId = user_id.toString(); // convert to string
+            console.log(stringId)
+            settings = await Settings.findOne({
+                user_id: user_id, // using string in query (Mongoose may auto-cast)
+                key: "displaySetting"
+            });
+            console.log(settings)
+        } else {
+            console.log("Invalid ObjectId format");
+        }
 
-        const settings = await Settings.findOne({ key: "displaySetting" });
+
         if (!settings) return res.status(404).json({ message: "Display settings not found" });
-
+        console.log(settings);
         const displayFields = settings.value;
         const settingmapcfIds = [];
 
         for (const field of displayFields) {
-            const customField = await CustomFields.findOne({ cf_id: field.cf_id }); // Find the custom field
+            const customField = allCustomFields.find(f => f.cf_id === field.cf_id);
             settingmapcfIds.push({
                 ...field,
-                cf_id: customField ? customField._id.toString() : field.cf_id // Replace cf_id with _id if found
+                cf_id: customField ? customField._id.toString() : field.cf_id
             });
         }
-        //console.log('ss', settingmapcfIds);
+
         const displayCfIds = displayFields.map(field => field.cf_id);
-        const customFieldsid = await CustomFields.find({
-            cf_id: { $in: displayCfIds }
-        });
-        const selectedcustomFieldIds = customFieldsid.map(field => field.id);
-        const customFieldcfIds = customFields.map(field => field.id);
-        //console.log('custoMFieldIds', customFieldcfIds, selectedcustomFieldIds);
+        const selectedCustomFields = allCustomFields.filter(field =>
+            displayCfIds.includes(field.cf_id)
+        );
+        const selectedCustomFieldIds = selectedCustomFields.map(field => field.id);
+
         const contactIds = contacts.map(contact => contact.id);
-        const allCustomFieldIds = [...customFieldcfIds, ...selectedcustomFieldIds];
+        const allCustomFieldIds = [
+            ...customFields.map(field => field.id),
+            ...selectedCustomFieldIds
+        ];
+
+        /*** 🧩 Fetch Custom Field Values for Contacts ***/
         const allCustomFieldValues = await ContactCustomFields.find({
             contact_id: { $in: contactIds },
-
             custom_field_id: { $in: allCustomFieldIds }
-
         });
-        //console.log('allCustomFieldValues', allCustomFieldValues)
+
         const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
             if (!acc[field.contact_id]) acc[field.contact_id] = {};
             acc[field.contact_id][field.custom_field_id] = field.value || null;
             return acc;
         }, {});
-        // console.log("jiu", contactFieldMap)
-        let formattedContacts = contacts.map(contact => {
+
+        /*** 🧷 Format Final Output ***/
+        const formattedContacts = contacts.map(contact => {
             const fieldValues = contactFieldMap[contact.id] || {};
-            //console.log(fieldValues, fieldMap);
+
             let standardFields = {
                 projectDate: null,
                 startTime: null,
@@ -205,15 +186,6 @@ const getContactsWithCustomFields = async (req, res) => {
             let relatedImages = [];
             let customCustomFields = [];
 
-            // Object.entries(fieldMap).forEach(([fieldName, cfId]) => {
-            //     if (fieldName === "Cover Image") {
-            //         cardCoverImage = fieldValues[cfId] || null;
-            //     } else if (fieldName === "related images") {
-            //         relatedImages = fieldValues[cfId] || [];
-            //     } else {
-            //         standardFields[fieldName] = fieldValues[cfId] || null;
-            //     }
-            // });
             Object.entries(fieldMap).forEach(([fieldName, cfId]) => {
                 const value = fieldValues[cfId] || null;
 
@@ -222,10 +194,8 @@ const getContactsWithCustomFields = async (req, res) => {
                 } else if (fieldName === "related images") {
                     relatedImages = value || [];
                 } else if (fieldName === "Confirmed Project Date") {
-                    // Override projectDate if Confirmed Project Date exists
                     standardFields.projectDate = value;
                 } else if (fieldName === "Project Date" && !standardFields.projectDate) {
-                    // Only set this if Confirmed Project Date wasn't set earlier
                     standardFields.projectDate = value;
                 } else if (fieldName === "Start Time") {
                     standardFields.startTime = value;
@@ -234,13 +204,10 @@ const getContactsWithCustomFields = async (req, res) => {
                 }
             });
 
-            // console.log(settingmapcfIds);
             customCustomFields = settingmapcfIds.map(({ cf_id, cf_name }) => ({
-
                 label: cf_name,
                 value: fieldValues[cf_id] || null
             }));
-
 
             return {
                 basicContactData: {
@@ -250,9 +217,13 @@ const getContactsWithCustomFields = async (req, res) => {
                     name: contact.name || "No Name",
                     location: contact.location || null,
                     vendor: contact.vendor || null,
-                    tags: Array.isArray(contact.tags) ? contact.tags : (typeof contact.tags === "string" ? contact.tags.split(",") : []),
+                    tags: Array.isArray(contact.tags)
+                        ? contact.tags
+                        : typeof contact.tags === "string"
+                            ? contact.tags.split(",")
+                            : [],
                     age: contact.age || null,
-                    address: contact.address || null,
+                    address: contact.address || null
                 },
                 cardCoverImage,
                 standardCustomFields: standardFields,
@@ -260,36 +231,36 @@ const getContactsWithCustomFields = async (req, res) => {
                 customCustomFields
             };
         });
+
+        /*** 🧼 Final Sort by Project Date ***/
         formattedContacts.sort((a, b) => {
             const aDate = a.standardCustomFields?.projectDate
                 ? new Date(a.standardCustomFields.projectDate)
                 : null;
-
             const bDate = b.standardCustomFields?.projectDate
                 ? new Date(b.standardCustomFields.projectDate)
                 : null;
 
-            //console.log(aDate, bDate);
+            if (!aDate && !bDate) return 0;
+            if (!aDate) return 1;
+            if (!bDate) return -1;
 
-            if (!aDate && !bDate) return 0; // If both are null, keep order
-            if (!aDate) return 1; // Move null dates to the end
-            if (!bDate) return -1; // Move null dates to the end
-
-            return sortDate?.toLowerCase() === "asc"
-                ? aDate - bDate
-                : bDate - aDate;
+            return sortDate?.toLowerCase() === "asc" ? aDate - bDate : bDate - aDate;
         });
 
-
+        /*** ✅ Return Response ***/
         return res.status(200).json({
             contacts: formattedContacts,
             page,
             limit,
-            totalContacts: await Contacts.countDocuments(query),
+            totalContacts: totalContactsQuery
         });
     } catch (error) {
         console.error("Error fetching contacts:", error.message);
-        return res.status(500).json({ message: "Internal server error", error: error.message });
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message
+        });
     }
 };
 // const getContactsWithCustomFields = async (req, res) => {
