@@ -13,7 +13,7 @@ const getCustomFieldsFromGHL = async (locationId, accessToken,user) => {
         //     },
         // });
         // return response.data.customFields; // Return the custom fields data
-        let response = await Crm.CrmV2(user._id,`locations/${locationId}/customFields`,'get');
+        let response = await CRM.crmV2(user._id,`locations/${locationId}/customFields`,'get');
         return response.customFields;
     } catch (error) {
         console.error('Error fetching custom fields from GHL:', error);
