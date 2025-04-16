@@ -271,12 +271,12 @@ exports.createAppointment = async (req, res) => {
             }
         };
 console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
-
-    try {
-        const {
+    const {
             data,
             extras
         } = req.body;
+    try {
+    
 console.log(JSON.stringify(req.body));
         const {
             start_date,
