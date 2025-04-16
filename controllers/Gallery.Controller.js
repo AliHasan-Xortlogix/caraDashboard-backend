@@ -185,21 +185,21 @@ const getContactsWithCustomFields = async (req, res) => {
             let cardCoverImage = null;
             let relatedImages = [];
             let customCustomFields = [];
-console.log('Ye Feild Map haa',fieldMap);
+
             Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
                 const value = fieldValues[cfId] || null;
 
-                if (fieldKey === "contact.cover.image") {
+                if (fieldKey === "contact.cover_image") {
                     cardCoverImage = value;
-                } else if (fieldKey === "contact.related.images") {
+                } else if (fieldKey === "contact.related_images") {
                     relatedImages = value || [];
-                } else if (fieldKey === "contact.project.date") {
+                } else if (fieldKey === "contact.project_date") {
                     standardFields.projectDate = value;
-                } else if (fieldKey === "contact.project.date" && !standardFields.projectDate) {
+                } else if (fieldKey === "contact.project_date" && !standardFields.projectDate) {
                     standardFields.projectDate = value;
-                } else if (fieldKey === "contact.start.time") {
+                } else if (fieldKey === "contact.start_time") {
                     standardFields.startTime = value;
-                } else if (fieldKey === "contact.end.time") {
+                } else if (fieldKey === "contact.end_time") {
                     standardFields.endTime = value;
                 }
             });
