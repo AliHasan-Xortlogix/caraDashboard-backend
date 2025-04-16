@@ -270,6 +270,7 @@ exports.createAppointment = async (req, res) => {
                 throw new Error('Failed to create appointment');
             }
         };
+console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
 
     try {
         const {
