@@ -275,9 +275,7 @@ console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
             data,
             extras
         } = req.body;
-    try {
-    
-console.log(JSON.stringify(req.body));
+    console.log(JSON.stringify(req.body));
         let {
             start_date,
             start_time = "09:00AM", // fallback default
@@ -310,6 +308,9 @@ console.log(JSON.stringify(req.body));
             startTime: parsedStart,
             endTime: parsedEnd,
         };
+    try {
+    
+
         console.log(payload);
         // Fetch token
         const user = await User.findOne({ location_id: locationId });
