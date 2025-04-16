@@ -266,8 +266,10 @@ exports.createAppointment = async (req, res) => {
                 }
     
             } catch (error) {
-                console.error('Error creating appointment:', error.response?.data || error.message);
-                throw new Error('Failed to create appointment');
+                  return {
+                        appointmentCreation: false,
+                        rejectionTag: true,
+                    };
             }
         };
 
