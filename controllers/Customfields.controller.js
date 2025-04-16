@@ -14,7 +14,8 @@ const getCustomFieldsFromGHL = async (locationId, accessToken,user) => {
         // });
         // return response.data.customFields; // Return the custom fields data
         let response = await CRM.crmV2(user._id,`locations/${locationId}/customFields`,'get');
-        return response.customFields;
+        console.log(response);
+        return response;
     } catch (error) {
         console.error('Error fetching custom fields from GHL:', error);
         throw new Error('Failed to fetch custom fields');
@@ -27,6 +28,7 @@ const storeCustomFields = async (customFields, locationId, userId) => {
         if(customFields.length === 0){
             return res.status(404).json({ message: "No custom fields found for this user" });
         }
+
         for (const field of customFields) {
             // Check if a custom field already exists with the same user_id, cf_id, and location_id
             const existingField = await CustomField.findOne({
@@ -87,8 +89,11 @@ const fetchAndSaveCustomFields = async (req, res) => {
         const customFields = await getCustomFieldsFromGHL(locationId, accessToken,user);
         console.log(customFields)
         // Store custom fields in the database
-        await storeCustomFields(customFields, locationId, userId);
-
+        if(customFields.customFields){
+            await storeCustomFields(customFields.customFields, locationId, userId);
+        }else{
+            return res.status(404).json({ message: "No custom fields found for this user" });
+        }
         return res.status(200).json({ message: 'Custom fields fetched and stored successfully' });
     } catch (error) {
         console.error('Error:', error);
