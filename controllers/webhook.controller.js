@@ -236,67 +236,65 @@ exports.syncContact = async (req, res) => {
 
 };
 exports.createAppointment = async (req, res) => {
-        const makeAppointmentCall = async (payload, accessToken) => {
-            try {
-                const response = await axios.post(
-                    "https://services.leadconnectorhq.com/calendars/events/appointments",
-                    payload,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                            Version: "2021-07-28",
-                            "Content-Type": "application/json",
-                        },
-                    }
-                );
-    
-                console.log("Appointment Response:", response.data);
-    
-                // Check for `id` in response
-                if (response.data && response.data.id) {
-                    return {
-                        appointmentCreation: true,
-                        rejectionTag: false,
-                    };
-                } else {
-                    return {
-                        appointmentCreation: false,
-                        rejectionTag: true,
-                    };
+    const makeAppointmentCall = async (payload, accessToken) => {
+        try {
+            const response = await axios.post(
+                "https://services.leadconnectorhq.com/calendars/events/appointments",
+                payload,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        Version: "2021-07-28",
+                        "Content-Type": "application/json",
+                    },
                 }
-    
-            } catch (error) {
-                console.error('Error creating appointment:', error.response?.data || error.message);
-                throw new Error('Failed to create appointment');
+            );
+
+            console.log("Appointment Response:", response.data);
+
+            if (response.data && response.data.id) {
+                return {
+                    appointmentCreation: true,
+                    rejectionTag: false,
+                };
+            } else {
+                return {
+                    appointmentCreation: false,
+                    rejectionTag: true,
+                };
             }
-        };
-console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
+
+        } catch (error) {
+            console.error('Error creating appointment:', error.response?.data || error.message);
+            throw new Error('Failed to create appointment');
+        }
+    };
+
+    console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
+
+    // ✅ Destructure main body and extras
     const {
-            data,
-            extras
-        } = req.body;
-    console.log(JSON.stringify(req.body));
-        let {
-            start_date,
-            start_time, // fallback default
-            end_date,
-            end_time ,   // fallback default
-            time_zone, // Convert "AEST" → "Australia/Sydney"
-            calendar_id,
-            user_id,
-            rejection_tag
-        } = data;
+        start_date,
+        start_time,
+        end_date,
+        end_time,
+        time_zone,
+        calendar_id,
+        user_id,
+        rejection_tag,
+        extras = {} // fallback in case extras not sent
+    } = req.body;
 
-        const {
-            locationId,
-            contactId,
-        } = extras;
+    const {
+        locationId,
+        contactId
+    } = extras;
 
-        // 🧠 Parse date in format "April 1, 2025"
+    try {
+        // ✅ Parse datetime
         const parsedStart = moment.tz(`${start_date} ${start_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
         const parsedEnd = moment.tz(`${end_date} ${end_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
 
-        // Prepare payload
         const payload = {
             title: "Test Event",
             ignoreDateRange: false,
@@ -308,11 +306,10 @@ console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
             startTime: parsedStart,
             endTime: parsedEnd,
         };
-    try {
-    
 
         console.log(payload);
-        // Fetch token
+
+        // ✅ Fetch access token from DB
         const user = await User.findOne({ location_id: locationId });
         if (!user) {
             return res.status(400).json({ error: `User not found for location_id: ${locationId}` });
@@ -325,15 +322,17 @@ console.log('Ye new wala hai:', JSON.stringify(req.body, null, 2));
 
         const accessToken = ghlauthRecord.access_token;
 
+        // ✅ Make appointment API call
         const appointmentResult = await makeAppointmentCall(payload, accessToken);
 
-        if(appointmentResult.rejectionTag) {
+        if (appointmentResult.rejectionTag) {
             appointmentResult.rejectionTag = rejection_tag;
         }
+
         return res.status(200).json(appointmentResult);
 
     } catch (error) {
         console.error("Appointment creation failed:", error.response?.data || error.message);
-        res.status(500).json({ success: false, message: "Failed to create appointment" });
+        return res.status(500).json({ success: false, message: "Failed to create appointment" });
     }
 };
