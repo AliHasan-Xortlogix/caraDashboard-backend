@@ -141,8 +141,8 @@ const getContactsWithCustomFields = async (req, res) => {
         }
 
 
-        if (!settings) return res.status(404).json({ message: "Display settings not found" });
-        console.log(settings);
+        // if (!settings) return res.status(404).json({ message: "Display settings not found" });
+        // console.log(settings);
         // const displayFields = settings.value;
         // const settingmapcfIds = [];
 
