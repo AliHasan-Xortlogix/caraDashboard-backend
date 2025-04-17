@@ -10,7 +10,7 @@ const moment = require("moment-timezone");
 const CRM = require('../utils/Crm.auto');
 exports.syncContact = async (req, res) => {
   const event = req.body;
-
+console.log("webhook" ,event)
   const createContactData = (event) => {
     return new Contact({
       location_id: event.locationId || null,
