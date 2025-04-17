@@ -91,10 +91,15 @@ const getContactsWithCustomFields = async (req, res) => {
         }
 
         /*** 🔽 Sorting ***/
-        const sortOptions = {
-            Project_date: sortDate?.toLowerCase() === "desc" ? -1 : 1,
-            name: sortName?.toLowerCase() === "desc" ? -1 : 1,
-        };
+        const sortOptions = {};
+
+        // if (sortDate) {
+        //     sortOptions.Project_date = sortDate.toLowerCase() === "desc" ? -1 : 1;
+        // }
+
+        if (sortName) {
+            sortOptions.name = sortName.toLowerCase() === "desc" ? -1 : 1;
+        }
 
         /*** 📦 Fetch Contacts ***/
         const totalContactsQuery = await Contacts.countDocuments(query);
@@ -138,41 +143,67 @@ const getContactsWithCustomFields = async (req, res) => {
 
         if (!settings) return res.status(404).json({ message: "Display settings not found" });
         console.log(settings);
-        const displayFields = settings.value;
-        const settingmapcfIds = [];
+        // const displayFields = settings.value;
+        // const settingmapcfIds = [];
 
-        for (const field of displayFields) {
-            const customField = allCustomFields.find(f => f.cf_id === field.cf_id);
-            settingmapcfIds.push({
-                ...field,
-                cf_id: customField ? customField._id.toString() : field.cf_id
+        // for (const field of displayFields) {
+        //     const customField = allCustomFields.find(f => f.cf_id === field.cf_id);
+        //     settingmapcfIds.push({
+        //         ...field,
+        //         cf_id: customField ? customField._id.toString() : field.cf_id
+        //     });
+        // }
+
+        // const displayCfIds = displayFields.map(field => field.cf_id);
+        // const selectedCustomFields = allCustomFields.filter(field =>
+        //     displayCfIds.includes(field.cf_id)
+        // );
+        // const selectedCustomFieldIds = selectedCustomFields.map(field => field.id);
+
+        // const contactIds = contacts.map(contact => contact.id);
+        // const allCustomFieldIds = [
+        //     ...customFields.map(field => field.id),
+        //     ...selectedCustomFieldIds
+        // ];
+
+        // /*** 🧩 Fetch Custom Field Values for Contacts ***/
+        // const allCustomFieldValues = await ContactCustomFields.find({
+        //     contact_id: { $in: contactIds },
+        //     custom_field_id: { $in: allCustomFieldIds }
+        // });
+
+        // const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
+        //     if (!acc[field.contact_id]) acc[field.contact_id] = {};
+        //     acc[field.contact_id][field.custom_field_id] = field.value || null;
+        //     return acc;
+        // }, {});
+let settingmapcfIds = [];
+        let selectedcustomFieldIds = [];
+        if (settings && settings.value) {
+            const displayFields = settings.value;
+            for (const field of displayFields) {
+                const customField = await CustomFields.findOne({ cf_id: field.cf_id });
+                settingmapcfIds.push({
+                    ...field,
+                    cf_id: customField ? customField._id.toString() : field.cf_id
+                });
+            }
+            const customFieldsid = await CustomFields.find({
+                cf_id: { $in: displayFields.map(field => field.cf_id) }
             });
+            selectedcustomFieldIds = customFieldsid.map(field => field.id);
         }
-
-        const displayCfIds = displayFields.map(field => field.cf_id);
-        const selectedCustomFields = allCustomFields.filter(field =>
-            displayCfIds.includes(field.cf_id)
-        );
-        const selectedCustomFieldIds = selectedCustomFields.map(field => field.id);
-
         const contactIds = contacts.map(contact => contact.id);
-        const allCustomFieldIds = [
-            ...customFields.map(field => field.id),
-            ...selectedCustomFieldIds
-        ];
-
-        /*** 🧩 Fetch Custom Field Values for Contacts ***/
+        const allCustomFieldIds = [...customFields.map(field => field.id), ...selectedcustomFieldIds];
         const allCustomFieldValues = await ContactCustomFields.find({
             contact_id: { $in: contactIds },
             custom_field_id: { $in: allCustomFieldIds }
         });
-
         const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
             if (!acc[field.contact_id]) acc[field.contact_id] = {};
             acc[field.contact_id][field.custom_field_id] = field.value || null;
             return acc;
         }, {});
-
         /*** 🧷 Format Final Output ***/
         const formattedContacts = contacts.map(contact => {
             const fieldValues = contactFieldMap[contact.id] || {};
@@ -233,20 +264,22 @@ const getContactsWithCustomFields = async (req, res) => {
         });
 
         /*** 🧼 Final Sort by Project Date ***/
-        formattedContacts.sort((a, b) => {
-            const aDate = a.standardCustomFields?.projectDate
-                ? new Date(a.standardCustomFields.projectDate)
-                : null;
-            const bDate = b.standardCustomFields?.projectDate
-                ? new Date(b.standardCustomFields.projectDate)
-                : null;
+        if (sortDate) {
+            formattedContacts.sort((a, b) => {
+                const aDate = a.standardCustomFields?.projectDate
+                    ? new Date(a.standardCustomFields.projectDate)
+                    : null;
+                const bDate = b.standardCustomFields?.projectDate
+                    ? new Date(b.standardCustomFields.projectDate)
+                    : null;
 
-            if (!aDate && !bDate) return 0;
-            if (!aDate) return 1;
-            if (!bDate) return -1;
+                if (!aDate && !bDate) return 0;
+                if (!aDate) return 1;
+                if (!bDate) return -1;
 
-            return sortDate?.toLowerCase() === "asc" ? aDate - bDate : bDate - aDate;
-        });
+                return sortDate?.toLowerCase() === "asc" ? aDate - bDate : bDate - aDate;
+            });
+        }
 
         /*** ✅ Return Response ***/
         return res.status(200).json({
