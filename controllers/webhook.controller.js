@@ -122,6 +122,9 @@ console.log("webhook" ,event)
   // Step 1: Delete all existing custom fields for this contact
 
       let fieldData = await customFieldModels.findOne({ cf_id: field.id });
+if(typeof field.value == "array" ){
+JSON.stringify(field.value);
+}
       let value =
         typeof field.value === "object" && field.value !== null
           ? Object.values(field.value)
