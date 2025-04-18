@@ -199,11 +199,28 @@ let settingmapcfIds = [];
             contact_id: { $in: contactIds },
             custom_field_id: { $in: allCustomFieldIds }
         });
+        // const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
+        //     if (!acc[field.contact_id]) acc[field.contact_id] = {};
+        //     acc[field.contact_id][field.custom_field_id] = field.value || null;
+        //     return acc;
+        // }, {});
         const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
-            if (!acc[field.contact_id]) acc[field.contact_id] = {};
-            acc[field.contact_id][field.custom_field_id] = field.value || null;
-            return acc;
+          if (!acc[field.contact_id]) acc[field.contact_id] = {};
+        
+          let value = field.value;
+        
+          if (Array.isArray(value)) {
+            // Display array as comma-separated string or keep as-is
+            value = value.join(', ');
+          } else if (typeof value === 'object' && value !== null) {
+            // Display object as JSON string (or extract useful parts)
+            value = JSON.stringify(value); // or customize display here
+          }
+        
+          acc[field.contact_id][field.custom_field_id] = value ?? null;
+          return acc;
         }, {});
+
         /*** 🧷 Format Final Output ***/
         const formattedContacts = contacts.map(contact => {
             const fieldValues = contactFieldMap[contact.id] || {};
