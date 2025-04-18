@@ -116,9 +116,10 @@ console.log("webhook" ,event)
 
   const handleCustomFields = async (event, contact, user) => {
     if (!event.customFields?.length) return;
-
+  await ContactCustomField.deleteMany({ contact_id: contact._id });
     for (const field of event.customFields) {
       if (!field.id) continue;
+  // Step 1: Delete all existing custom fields for this contact
 
       let fieldData = await customFieldModels.findOne({ cf_id: field.id });
       let value =
