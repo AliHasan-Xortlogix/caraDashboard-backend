@@ -251,7 +251,7 @@ console.log("webhook" ,event)
       }
     }
     if (event.type === "ContactDelete") {
-      const contact = await Contact.findOne({ contact_id: event.id });
+      let contact = await Contact.findOne({ contact_id: event.id });
     
       if (!contact) {
         return res.status(404).json({ error: `Contact not found for ID: ${event.id}` });
@@ -259,8 +259,10 @@ console.log("webhook" ,event)
     
       // Assuming you have a model named ContactCustomField and it uses contact._id as reference
       const deletedFields = await ContactCustomField.deleteMany({ contact_id: contact._id });
+      contact =await Contact.deleteOne({ contact_id: event.id });
     
       console.log(`Deleted custom fields: ${deletedFields.deletedCount}`);
+      console.log(`Deleted Contact: ${event.id}`);
     }
     if (["ContactUpdate", "ContactTagUpdate"].includes(event.type)) {
       if (event.locationId === user.location_id) {
