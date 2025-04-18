@@ -125,12 +125,26 @@ console.log("webhook" ,event)
       if (Array.isArray(field.value)) {
         console.log("This is an array:", JSON.stringify(field.value));
       }
-      let value =
-        typeof field.value === "object" && field.value !== null
-          ? Object.values(field.value)
-              .filter((v) => v?.url && !v.meta?.deleted)
-              .map((v) => v.url)
-          : field.value;
+      // let value =
+      //   typeof field.value === "object" && field.value !== null
+      //     ? Object.values(field.value)
+      //         .filter((v) => v?.url && !v.meta?.deleted)
+      //         .map((v) => v.url)
+      //     : field.value;
+        let value;
+        
+        if (Array.isArray(field.value)) {
+          // Just use the array directly
+          value = field.value;
+        } else if (typeof field.value === "object" && field.value !== null) {
+          // Extract URLs from object of objects (if needed)
+          value = Object.values(field.value)
+            .filter((v) => v?.url && !v.meta?.deleted)
+            .map((v) => v.url);
+        } else {
+          // Use the raw value if primitive
+          value = field.value;
+        }
 
       console.log(
         "Processed URL(s) from object value:",
