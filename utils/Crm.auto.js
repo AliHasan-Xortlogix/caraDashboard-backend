@@ -116,7 +116,7 @@ class CRM {
 
     // Direct connect method to redirect to OAuth flow
     static directConnect() {
-        return `https://marketplace.gohighlevel.com/oauth/chooselocation?${this.baseConnect()}`;
+        return `https://marketplace.gohighlevel.com/oauth/chooselocation?${baseConnect()}`;
     }
 
     // Method to initiate OAuth connection
