@@ -98,7 +98,7 @@ class CRM {
     }
 
     // Base connect method to initialize OAuth connection
-    static async baseConnect(scopes) {
+     async baseConnect(scopes) {
         try {
             const { clientId, clientSecret } = await getSuperadminSettings();
 
@@ -115,8 +115,8 @@ class CRM {
     }
 
     // Direct connect method to redirect to OAuth flow
-    static directConnect() {
-        return `https://marketplace.gohighlevel.com/oauth/chooselocation?${baseConnect()}`;
+    async directConnect() {
+        return `https://marketplace.gohighlevel.com/oauth/chooselocation?${ await baseConnect()}`;
     }
 
     // Method to initiate OAuth connection
