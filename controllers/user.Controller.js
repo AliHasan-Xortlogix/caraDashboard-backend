@@ -226,10 +226,9 @@ exports.logoutUser = catchAsyncErrors(async (req, res, next) => {
 
 exports.updateUserBySuperadmin = catchAsyncErrors(async (req, res, next) => {
     const { userId } = req.params;
-    console.log(userId)
-    const { name, email, role, location_id } = req.body; // Capture fields that can be updated
+    const { name, email, role, location_id, password } = req.body;
 
-    // Check if the superadmin is attempting to edit their own details
+    // Only superadmin can perform this action
     if (req.user.role !== 'superadmin') {
         return next(new ErrorHandler('Access denied', 403));
     }
@@ -239,9 +238,12 @@ exports.updateUserBySuperadmin = catchAsyncErrors(async (req, res, next) => {
         return next(new ErrorHandler('User not found', 404));
     }
 
+    // If password is being updated, hash it
+    if (password) {
+        const salt = await bcrypt.genSalt(10);
+        req.body.password = await bcrypt.hash(password, salt);
+    }
 
-
-    // Update user details by the superadmin
     const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
         new: true,
         runValidators: true,
