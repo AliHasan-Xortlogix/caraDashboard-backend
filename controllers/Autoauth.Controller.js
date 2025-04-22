@@ -29,23 +29,43 @@ const autoAuthController = async (req, res) => {
 
         let user = await User.findOne({ location_id: location });
 
-        if (!user) {
-            // If user exists, return token
-            // return sendToken(user, 200, res);
-            // } else {
+        // if (!user) {
+        //     // If user exists, return token
+        //     // return sendToken(user, 200, res);
+        //     // } else {
+        //     // Create a new user
+        //     const password = 12345678;  // Default password
+        //     const email = `${location}@gmail.com`;  // Temporary email based on location
+        //     const name = `${location}`;
+
+        //     // Validate email format
+        //     if (!validateEmail(email)) {
+        //         return res.status(400).json({
+        //             success: false,
+        //             message: 'Invalid email format.'
+        //         });
+        //     }
+ if (user) {
+            // Check user status
+            if (user.status === 'inactive') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'User is INACTIVE'
+                });
+            }
+        } else {
             // Create a new user
-            const password = 12345678;  // Default password
-            const email = `${location}@gmail.com`;  // Temporary email based on location
+            const rawPassword = '12345678'; // Default password
+            const hashedPassword = await bcrypt.hash(rawPassword, 10);
+            const email = `${location}@gmail.com`;
             const name = `${location}`;
 
-            // Validate email format
             if (!validateEmail(email)) {
                 return res.status(400).json({
                     success: false,
                     message: 'Invalid email format.'
                 });
             }
-
             // Create the new user
             user = await User.create({
                 name: name,
