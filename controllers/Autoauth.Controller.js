@@ -58,7 +58,7 @@ const autoAuthController = async (req, res) => {
             const rawPassword = '12345678'; // Default password
             const hashedPassword = await bcrypt.hash(rawPassword, 10);
             const email = `${location}@gmail.com`;
-            const name = `${location}`;
+            const name = "New User";
 
             if (!validateEmail(email)) {
                 return res.status(400).json({
