@@ -47,24 +47,25 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
 exports.loginUser = catchAsyncErrors(async (req, res, next) => {
     const { email, password } = req.body;
 
-    // Check if email and password are provided
     if (!email || !password) {
         return next(new ErrorHandler('Please provide email and password', 400));
     }
 
-    // Find the user by email
     const user = await User.findOne({ email });
     if (!user) {
         return next(new ErrorHandler('Invalid credentials', 401));
     }
 
-    // Compare the entered password with the stored password
+    // Check if user is inactive
+    if (user.status === 'inactive') {
+        return next(new ErrorHandler('You are INACTIVE', 403));
+    }
+
     const isPasswordMatch = await user.comparePassword(password);
     if (!isPasswordMatch) {
         return next(new ErrorHandler('Invalid credentials', 401));
     }
 
-    // Send JWT Token response
     sendToken(user, 200, res);
 });
 
