@@ -109,7 +109,13 @@ const getContactsWithCustomFields = async (req, res) => {
             .limit(limit == 0 ? totalContactsQuery : Number(limit));
 
         if (!contacts.length) {
-            return res.status(404).json({ message: "No contacts found" });
+            //return res.status(404).json({ message: "No contacts found" });
+        return res.status(200).json({
+            contacts: {},
+            page,
+            limit,
+            totalContacts: totalContactsQuery
+        });
         }
 
         /*** 📋 Get Display Field Settings ***/
