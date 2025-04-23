@@ -56,7 +56,14 @@ const autoAuthController = async (req, res) => {
         } else {
             // Create a new user
             const rawPassword = '12345678'; // Default password
-            const hashedPassword = await bcrypt.hash(rawPassword, 10);
+            let hashedPassword = await bcrypt.hash(rawPassword, 10);
+            try {
+                const salt = await bcrypt.genSalt(10);
+                hashedPassword = await bcrypt.hash(rawPassword, salt);
+            } catch (error) {
+                console.error("Error during salting and hashing:", error.message);
+                // hashedPassword remains as the first fallback hash
+            }
             const email = `${location}@gmail.com`;
             const name = "New User";
 
