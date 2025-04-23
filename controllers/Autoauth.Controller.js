@@ -79,7 +79,7 @@ const autoAuthController = async (req, res) => {
                 location_id: location,
                 ghl_api_key: token,
                 email: email,
-                password:hashedPassword,  // Default password, ideally should be hashed
+                password:rawPassword,  // Default password, ideally should be hashed
                 user_type: 'company',
                 status: 'active'
             });
