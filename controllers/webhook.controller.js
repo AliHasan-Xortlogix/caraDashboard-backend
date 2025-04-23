@@ -361,10 +361,23 @@ exports.createAppointment = async (req, res) => {
         // 🧠 Parse date in format "April 1, 2025"
         const parsedStart = moment.tz(`${start_date} ${start_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
         const parsedEnd = moment.tz(`${end_date} ${end_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
+        // Fetch token
+        const user = await User.findOne({ location_id: locationId });
+        if (!user) {
+            return res.status(400).json({ error: `User not found for location_id: ${locationId}` });
+        }
+        const findContact = await Contact.findOne({ contact_id: contactId });
+        if (!findContact) {
+            return res.status(400).json({ error: `Contact not found for location_id: ${locationId}` });
+        }
 
+        const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
+        if (!ghlauthRecord || !ghlauthRecord.access_token) {
+            return res.status(400).json({ error: 'Access token not found for this location' });
+        }
         // Prepare payload
         const payload = {
-            title: "Test Event",
+            title: findContact?.name || "New Event",
             ignoreDateRange: false,
             ignoreFreeSlotValidation: true,
             assignedUserId: user_id,
@@ -375,17 +388,6 @@ exports.createAppointment = async (req, res) => {
             endTime: parsedEnd,
         };
         console.log(payload);
-        // Fetch token
-        const user = await User.findOne({ location_id: locationId });
-        if (!user) {
-            return res.status(400).json({ error: `User not found for location_id: ${locationId}` });
-        }
-
-        const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
-        if (!ghlauthRecord || !ghlauthRecord.access_token) {
-            return res.status(400).json({ error: 'Access token not found for this location' });
-        }
-
         const accessToken = ghlauthRecord.access_token;
 
         const appointmentResult = await makeAppointmentCall(payload, accessToken,user);
