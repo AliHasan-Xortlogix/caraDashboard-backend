@@ -7,5 +7,5 @@ const { getSuggestion } = require('../controllers/suggestion.Controller');
 // Define route for getting all contacts with custom fields and display settings
 router.get('/galleryview', isAuthenticatedUser,getContactsWithCustomFields);
 router.get('/contactsview', getSingleContact);
-router.get('/search-suggestions', getSuggestion)
+router.get('/search-suggestions',isAuthenticatedUser, getSuggestion)
 module.exports = router;
