@@ -58,7 +58,7 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
 
     // Check if user is inactive
     if (user.status === 'inactive') {
-        return next(new ErrorHandler('You are INACTIVE', 403));
+        return next(new ErrorHandler('Your account has been Deactivated Please Contact Admin.', 403));
     }
 
     const isPasswordMatch = await user.comparePassword(password);
@@ -74,7 +74,7 @@ exports.getAllUsers = catchAsyncErrors(async (req, res, next) => {
     if (req.user.role === 'superadmin') {
         const users = await User.find({ _id: { $ne: req.user._id } }); // Exclude logged-in superadmin
         if (!users || users.length === 0) {
-            return next(new ErrorHandler('No users found', 404));
+            return next(new ErrorHandler('User not found', 404));
         }
         return res.status(200).json({
             success: true,
