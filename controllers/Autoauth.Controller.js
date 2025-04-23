@@ -23,7 +23,7 @@ const autoAuthController = async (req, res) => {
         if (!location || !token) {
             return res.status(400).json({
                 success: false,
-                message: 'Location ID and Token are required.'
+                message: 'Location ID and Token are required please check custom menu link.'
             });
         }
 
@@ -50,7 +50,7 @@ const autoAuthController = async (req, res) => {
             if (user.status === 'inactive') {
                 return res.status(403).json({
                     success: false,
-                    message: 'User is INACTIVE'
+                    message: 'Your account has been deactivated please contact Admin.'
                 });
             }
         } else {
