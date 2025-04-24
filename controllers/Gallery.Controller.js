@@ -249,7 +249,7 @@ let settingmapcfIds = [];
 
                if (fieldKey === "contact.cover_image") {
                     cardCoverImage = value;
-                    coverImage = cropedImage || value;
+                    coverImage = value;
                 } else if (fieldKey === "contact.related_images") {
                     relatedImages = value || [];
                 } else if (fieldKey === "contact.project_date") {
