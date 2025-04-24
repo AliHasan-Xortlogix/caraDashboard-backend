@@ -241,6 +241,7 @@ let settingmapcfIds = [];
                 finishTime: null
             };
             let cardCoverImage = null;
+               let cropedImage = null;
             let relatedImages = [];
             let customCustomFields = [];
 
@@ -284,7 +285,7 @@ let settingmapcfIds = [];
                     age: contact.age || null,
                     address: contact.address || null
                 },
-                cardCoverImage,
+                cardCoverImage,cropedImage,
                 standardCustomFields: standardFields,
                 relatedImages,
                 customCustomFields
