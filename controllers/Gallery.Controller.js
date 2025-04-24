@@ -205,9 +205,13 @@ let settingmapcfIds = [];
             contact_id: { $in: contactIds },
             custom_field_id: { $in: allCustomFieldIds }
         });
+     
         const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
             if (!acc[field.contact_id]) acc[field.contact_id] = {};
-            acc[field.contact_id][field.custom_field_id] = field.value || null;
+            acc[field.contact_id][field.custom_field_id] = {
+                value: field.value || null,
+                cropedImage: field.cropedImage || null, // ✅ include this
+            }    ;
             return acc;
         }, {});
         // const contactFieldMap = allCustomFieldValues.reduce((acc, field) => {
