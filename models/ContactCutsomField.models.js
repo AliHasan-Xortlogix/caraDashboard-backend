@@ -16,7 +16,11 @@ const ContactCustomFieldSchema = new mongoose.Schema(
       type: String,
       ref: "CustomField",
       default: null,
-    }, // Foreign key reference to CustomField
+    }, 
+    cropedImage:{
+      type:String,
+      default:null,
+    },
     value: { type: Schema.Types.Mixed, default: null }, // Stores custom field value
   },
   { timestamps: true }
