@@ -32,6 +32,7 @@ const displaycf = require('./routes/displaycf.routes');
 const webhook = require('./routes/webhook.routes');
 const gallery = require('./routes/Gallery.routes');
 const  ErrorHandler =require('./utils/Errorhandler')
+const imagecrop = require('./routes/cropped.routes')
 app.use('/api/v1', gallery);
 app.use('/api/v1', webhook);
 app.use('/api/v1', displaycf);
@@ -41,6 +42,7 @@ app.use('/api/v1', autoauth);
 app.use('/api/v1', userRoutes);
 app.use('/api/v1', ghlauthRoutes);
 app.use('/api/v1', Settings);
+app.use('/api/v1', imagecrop);
 app.use((err, req, res, next) => {
     console.error(err); // Optional: Log to console or file
     res.status(err.statusCode || 500).json({
