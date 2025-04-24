@@ -32,7 +32,7 @@ exports.uploadCropped = async (req, res) => {
             custom_field_id: customField._id,
         };
 
-        const croppedImagePath = `http://localhost:5000/api/v1/uploads/${filename}`;
+        const croppedImagePath = `https://caradashboard-backend-production.up.railway.app/uploads/${filename}`;
         const fullImagePath = path.join(__dirname, "..", "public", "uploads", filename);
 
         const existingEntry = await ContactCustomField.findOne(filter);
