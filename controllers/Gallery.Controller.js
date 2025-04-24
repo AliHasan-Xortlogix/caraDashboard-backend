@@ -243,8 +243,9 @@ let settingmapcfIds = [];
             Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
                 const value = fieldValues[cfId] || null;
 
-                if (fieldKey === "contact.cover_image") {
+               if (fieldKey === "contact.cover_image") {
                     cardCoverImage = value;
+                    coverImage = cropedImage || value;
                 } else if (fieldKey === "contact.related_images") {
                     relatedImages = value || [];
                 } else if (fieldKey === "contact.project_date") {
