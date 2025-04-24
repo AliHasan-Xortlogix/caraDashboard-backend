@@ -244,22 +244,22 @@ let settingmapcfIds = [];
             let relatedImages = [];
             let customCustomFields = [];
 
-            Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
-                const value = fieldValues[cfId] || null;
+               Object.entries(fieldMap).forEach(([fieldKey, cfId]) => {
+                const field = fieldValues[cfId];
 
-               if (fieldKey === "contact.cover_image") {
-                    cardCoverImage = value;
-                    coverImage = value;
+                if (!field) return; // ✅ skip if field is null
+
+                if (fieldKey === "contact.cover_image") {
+                    cropedImage = field.cropedImage;
+                    cardCoverImage = field.value;
                 } else if (fieldKey === "contact.related_images") {
-                    relatedImages = value || [];
-                } else if (fieldKey === "contact.project_date") {
-                    standardFields.projectDate = value;
+                    relatedImages = Array.isArray(field.value) ? field.value : [];
                 } else if (fieldKey === "contact.project_date" && !standardFields.projectDate) {
-                    standardFields.projectDate = value;
+                    standardFields.projectDate = field.value;
                 } else if (fieldKey === "contact.start_time") {
-                    standardFields.startTime = value;
+                    standardFields.startTime = field.value;
                 } else if (fieldKey === "contact.end_time") {
-                    standardFields.finishTime = value;
+                    standardFields.finishTime = field.value;
                 }
             });
 
