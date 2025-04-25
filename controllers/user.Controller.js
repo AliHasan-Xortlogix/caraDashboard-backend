@@ -13,6 +13,8 @@ const Ghlauth = require('../models/Ghlauth.models')
 const customFields = require('../models/customFields.models')
 const ContactCustomField = require('../models/ContactCutsomField.models')
 const contacts = require('../models/Contact.models')
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 // Register a new user => /api/v1/register
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     // Validate request body using Joi
@@ -270,19 +272,28 @@ exports.deleteUserBySuperadmin = catchAsyncErrors(async (req, res, next) => {
 
     const { _id, location_id } = user;
 
-    // Use deleteOne instead of remove
-    await User.deleteOne({ _id });
 
-    // Remove related data in parallel
+
+    const contactsToDelete = await contacts.find({ location_id: location_id }).select('_id');
+    const contactIds = contactsToDelete.map(contact => contact._id);
+    
     await Promise.all([
-        Settings.deleteMany({ user_id: _id }),
+        // Settings: user_id is stored as ObjectId
+        Settings.deleteMany({ user_id: new ObjectId(_id) }),
+    
+        // Others: user_id is stored as a plain string
         Tag.deleteMany({ user_id: _id }),
         Ghlauth.deleteMany({ user_id: _id }),
         customFields.deleteMany({ user_id: _id }),
-        ContactCustomField.deleteMany({ user_id: _id }),
-        contacts.deleteMany({ location_id: location_id }),
+    
+        // ContactCustomField: delete by contact_id
+        ContactCustomField.deleteMany({ contact_id: { $in: contactIds } }),
+    
+        // Delete contacts themselves
+        contacts.deleteMany({ _id: { $in: contactIds } }),
     ]);
-
+    // Use deleteOne instead of remove
+    await User.deleteOne({ _id });
     // Return a success response
     res.status(200).json({
         success: true,
