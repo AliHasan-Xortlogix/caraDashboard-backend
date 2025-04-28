@@ -320,19 +320,19 @@ exports.createAppointment = async (req, res) => {
                 // Check for `id` in response
                 if (responseghl &&  responseghl.id) {
                     return {
-                        appointmentCreation: true,
+                        bookingCreated: true,
                         rejectionTag: false,
                     };
                 } else {
                     return {
-                        appointmentCreation: false,
+                        bookingCreated: false,
                         rejectionTag: true,
                     };
                 }
     
             } catch (error) {
-                console.error('Error creating appointment:', error.response?.data || error.message);
-                throw new Error('Failed to create appointment');
+                console.error('Error creating Booking:', error.response?.data || error.message);
+                throw new Error('Failed to create Booking');
             }
         };
 
