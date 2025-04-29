@@ -389,11 +389,12 @@ exports.createAppointment = async (req, res) => {
             ignoreDateRange: false,
             ignoreFreeSlotValidation: false,
             assignedUserId: user_id,
-            address: 
-            (findContact.address || '') + ',' +
-            (findContact.city || '') + ',' +
-            (findContact.state || '') + ',' +
-            (findContact.country || '')
+          address: [
+            findContact.address,
+            findContact.city,
+            findContact.state,
+            findContact.country
+          ].filter(Boolean).join(', '),
             calendarId: calendar_id,
             locationId: locationId,
             contactId: contactId,
