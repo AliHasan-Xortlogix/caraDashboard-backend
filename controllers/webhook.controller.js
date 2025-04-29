@@ -387,7 +387,7 @@ exports.createAppointment = async (req, res) => {
         const payload = {
             title: findContact?.name || "New Event",
             ignoreDateRange: false,
-            ignoreFreeSlotValidation: false,
+            ignoreFreeSlotValidation: true,
             assignedUserId: user_id,
           address: [
             findContact.address,
