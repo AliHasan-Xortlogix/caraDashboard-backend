@@ -276,14 +276,17 @@ let settingmapcfIds = [];
                     location_id: contact.location_id,
                     name: contact.name || "No Name",
                     location: contact.location || null,
-                    vendor: contact.vendor || null,
                     tags: Array.isArray(contact.tags)
                         ? contact.tags
                         : typeof contact.tags === "string"
                             ? contact.tags.split(",")
                             : [],
-                    age: contact.age || null,
-                    address: contact.address || null
+                    address: [
+                          contact.address,
+                          contact.city,
+                          contact.state,
+                          contact.country
+                        ].filter(Boolean).join(', ')
                 },
                 cardCoverImage,cropedImage,
                 standardCustomFields: standardFields,
