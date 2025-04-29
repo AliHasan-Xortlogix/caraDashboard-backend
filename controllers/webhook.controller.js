@@ -365,6 +365,7 @@ console.log("End point",endpoint);
         }
 
         const findContact = await Contact.findOne({ contact_id: contactId });
+console.log("Contact Id",findContact);
         if (!findContact) {
             return res.status(400).json({
                 bookingCreated: false,
