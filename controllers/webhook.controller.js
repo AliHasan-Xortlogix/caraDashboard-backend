@@ -308,7 +308,7 @@ exports.createAppointment = async (req, res) => {
                 ? `calendars/events/appointments/${appointmentId}` 
                 : 'calendars/events/appointments';
             const method = appointmentId ? 'put' : 'post';
-
+console.log("End point",endpoint);
             const responseghl = await CRM.crmV2(user._id, endpoint, method, payload);
             console.log("Appointment Response:", responseghl);
 
@@ -403,7 +403,7 @@ exports.createAppointment = async (req, res) => {
         };
 
         const appointmentId = findContact.appointment_id || null;
-
+console.log("Old Appointment Id",appointmentId);
         const appointmentResult = await createOrUpdateAppointment(payload, accessToken, user, appointmentId);
 
         if (appointmentResult.bookingCreated && !appointmentId && appointmentResult.appointmentId) {
