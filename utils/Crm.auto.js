@@ -260,7 +260,7 @@ class CRM {
         console.log(finalUrl);
         headers["Authorization"] = `Bearer ${accessToken}`;
        let ghlresponse= await this.makeCall(finalUrl, method, data, headers, json);
-       console.log(ghlresponse);
+       console.log('this isghl response' , ghlresponse);
         if (this.isExpired(ghlresponse)) {
         location = await this.handleTokenRefresh(company_id, urlmain, method, data, headers, json, location);
         if (location === "Token Expired") return {responseStatus:false, message:"Token Expired or RefreshToken is invalid"};
