@@ -302,105 +302,132 @@ console.log("webhook" ,event)
 
 
 exports.createAppointment = async (req, res) => {
-        const makeAppointmentCall = async (payload, accessToken,user) => {
-            try {
-                // const response = await axios.post(
-                //     "https://services.leadconnectorhq.com/calendars/events/appointments",
-                //     payload,
-                //     {
-                //         headers: {
-                //             Authorization: `Bearer ${accessToken}`,
-                //             Version: "2021-07-28",
-                //             "Content-Type": "application/json",
-                //         },
-                //     }
-                // );
-                let responseghl=await CRM.crmV2(user._id,`calendars/events/appointments`,'post',payload);
-                console.log("Appointment Response:", responseghl);
-                // Check for `id` in response
-                if (responseghl &&  responseghl.id) {
-                    return {
-                        bookingCreated: true,
-                        rejectionTag: false,
-                    };
-                } else {
-                    return {
-                        bookingCreated: false,
-                        rejectionTag: true,
-                    };
-                }
-    
-            } catch (error) {
-                console.error('Error creating Booking:', error.response?.data || error.message);
-                throw new Error('Failed to create Booking');
+    const createOrUpdateAppointment = async (payload, accessToken, user, appointmentId = null) => {
+        try {
+            const endpoint = appointmentId 
+                ? `calendars/events/appointments/${appointmentId}` 
+                : 'calendars/events/appointments';
+            const method = appointmentId ? 'put' : 'post';
+
+            const responseghl = await CRM.crmV2(user._id, endpoint, method, payload);
+            console.log("Appointment Response:", responseghl);
+
+            if (responseghl && (responseghl.id || appointmentId)) {
+                return {
+                    bookingCreated: true,
+                    rejectionTag: false,
+                    appointmentId: responseghl.id || appointmentId,
+                    clearMessage: appointmentId 
+                        ? 'Appointment successfully updated.' 
+                        : 'Appointment successfully created.'
+                };
+            } else {
+                return {
+                    bookingCreated: false,
+                    clearMessage: 'Failed to create or update appointment. Please check the payload or availability.'
+                };
             }
-        };
+        } catch (error) {
+            console.error('Error in Appointment API:', error.response?.data || error.message);
+            return {
+                bookingCreated: false,
+                clearMessage: `Appointment API error: ${error.response?.data?.message || error.message}`
+            };
+        }
+    };
 
     try {
-        const {
-            data,
-            extras
-        } = req.body;
+        const { data, extras } = req.body;
 
         const {
             start_date,
-            start_time = "09:00AM", // fallback default
+            start_time = "09:00AM",
             end_date,
-            end_time = "10:00AM",   // fallback default
-            time_zone = "Australia/Sydney", // Convert "AEST" → "Australia/Sydney"
+            end_time = "10:00AM",
+            time_zone = "Australia/Sydney",
             calendar_id,
             user_id,
             rejection_tag
         } = data;
 
-        const {
-            locationId,
-            contactId,
-        } = extras;
+        const { locationId, contactId } = extras;
 
-        // 🧠 Parse date in format "April 1, 2025"
         const parsedStart = moment.tz(`${start_date} ${start_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
         const parsedEnd = moment.tz(`${end_date} ${end_time}`, "MMMM D, YYYY hh:mmA", time_zone).format();
-        // Fetch token
+
         const user = await User.findOne({ location_id: locationId });
         if (!user) {
-            return res.status(400).json({ error: `User not found for location_id: ${locationId}` });
+            return res.status(400).json({
+                bookingCreated: false,
+                rejectionTag: rejection_tag,
+                clearMessage: `User not found for location_id: ${locationId}`
+            });
         }
+
         const findContact = await Contact.findOne({ contact_id: contactId });
         if (!findContact) {
-            return res.status(400).json({ error: `Contact not found for location_id: ${locationId}` });
+            return res.status(400).json({
+                bookingCreated: false,
+                rejectionTag: rejection_tag,
+                clearMessage: `Contact not found for contact_id: ${contactId}`
+            });
         }
 
         const ghlauthRecord = await Ghlauth.findOne({ location_id: locationId });
         if (!ghlauthRecord || !ghlauthRecord.access_token) {
-            return res.status(400).json({ error: 'Access token not found for this location' });
+            return res.status(400).json({
+                bookingCreated: false,
+                rejectionTag: rejection_tag,
+                clearMessage: 'Access token not found for this location.'
+            });
         }
-        // Prepare payload
+
+        const accessToken = ghlauthRecord.access_token;
+
         const payload = {
             title: findContact?.name || "New Event",
             ignoreDateRange: false,
-            ignoreFreeSlotValidation: true,
+            ignoreFreeSlotValidation: false,
             assignedUserId: user_id,
+            address: 
+            (findContact.address || '') + ',' +
+            (findContact.city || '') + ',' +
+            (findContact.state || '') + ',' +
+            (findContact.country || '')
             calendarId: calendar_id,
             locationId: locationId,
             contactId: contactId,
             startTime: parsedStart,
             endTime: parsedEnd,
         };
-        console.log(payload);
-        const accessToken = ghlauthRecord.access_token;
 
-        const appointmentResult = await makeAppointmentCall(payload, accessToken,user);
+        const appointmentId = findContact.appointment_id || null;
 
-        if(appointmentResult.rejectionTag) {
-            appointmentResult.rejectionTag = rejection_tag;
+        const appointmentResult = await createOrUpdateAppointment(payload, accessToken, user, appointmentId);
+
+        if (appointmentResult.bookingCreated && !appointmentId && appointmentResult.appointmentId) {
+            await Contact.updateOne(
+                { contact_id: contactId },
+                { appointment_id: appointmentResult.appointmentId }
+            );
         }
-        return res.status(200).json(appointmentResult);
+
+        return res.status(200).json({
+            bookingCreated: appointmentResult.bookingCreated,
+            rejectionTag: appointmentResult.bookingCreated ? false : rejection_tag,
+            clearMessage: appointmentResult.clearMessage
+        });
 
     } catch (error) {
-        console.error("Appointment creation failed:", error.response?.data || error.message);
-        res.status(500).json({ success: false, message: "Failed to create appointment" });
+        console.error("Appointment creation/update failed:", error.response?.data || error.message);
+        return res.status(500).json({
+            bookingCreated: false,
+            rejectionTag: rejection_tag,
+            clearMessage: `Server error: ${error.message || 'Unexpected error occurred'}`
+        });
     }
 };
+
+
 
 
