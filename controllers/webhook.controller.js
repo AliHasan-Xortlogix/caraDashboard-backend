@@ -366,11 +366,11 @@ console.log("End point",endpoint);
 
         const findContact = await Contact.findOne({ contact_id: contactId });
 console.log("Contact Id",findContact);
-return res.status(400).json({
-                bookingCreated: false,
-                rejectionTag: rejection_tag,
-                clearMessage: `Contact not found for contact_id: ${contactId}`
-            });
+// return res.status(400).json({
+//                 bookingCreated: false,
+//                 rejectionTag: rejection_tag,
+//                 clearMessage: `Contact not found for contact_id: ${contactId}`
+//             });
         if (!findContact) {
             return res.status(400).json({
                 bookingCreated: false,
