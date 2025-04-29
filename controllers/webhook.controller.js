@@ -402,7 +402,7 @@ console.log("End point",endpoint);
             endTime: parsedEnd,
         };
 
-        const appointmentId = findContact.appointment_id || null;
+        const appointmentId = findContact?.appointment_id;
 console.log("Old Appointment Id",appointmentId);
         const appointmentResult = await createOrUpdateAppointment(payload, accessToken, user, appointmentId);
 
