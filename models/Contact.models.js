@@ -47,6 +47,7 @@ const ContactSchema = new mongoose.Schema({
   qbo_id: { type: String, },
   qbo_sync_token: { type: String, },
   Project_date: { type: Date, default: null },
+  appointment_id: { type: String, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Contact", ContactSchema);
